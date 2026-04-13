@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Hubble Gateway SDK — one-line installer for Raspberry Pi
+# Hubble Gateway — one-line installer for Raspberry Pi / Linux
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh | sudo bash -s -- --sdk-key <YOUR_KEY>
@@ -13,15 +13,18 @@
 #   --adapter ADAPTER    BLE adapter (default: auto)
 #   --lat LAT            Fixed latitude
 #   --lon LON            Fixed longitude
-#   --uninstall          Remove the gateway service and venv
+#   --pip                Force pip install (skip binary)
+#   --uninstall          Remove the gateway service
 
 set -euo pipefail
 
 INSTALL_DIR="/opt/hubble-gateway"
+BIN_PATH="${INSTALL_DIR}/hubble-gateway"
 VENV_DIR="${INSTALL_DIR}/venv"
 SERVICE_NAME="hubble-gateway"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 ENV_FILE="${INSTALL_DIR}/.env"
+REPO="HubbleNetwork/gateway-service"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -42,6 +45,7 @@ BLE_ADAPTER=""
 LATITUDE=""
 LONGITUDE=""
 UNINSTALL=false
+FORCE_PIP=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -53,6 +57,7 @@ while [[ $# -gt 0 ]]; do
         --adapter)    BLE_ADAPTER="$2"; shift 2 ;;
         --lat)        LATITUDE="$2"; shift 2 ;;
         --lon)        LONGITUDE="$2"; shift 2 ;;
+        --pip)        FORCE_PIP=true; shift ;;
         --uninstall)  UNINSTALL=true; shift ;;
         *)            fatal "Unknown option: $1" ;;
     esac
@@ -80,24 +85,51 @@ fi
 
 info "Installing system dependencies..."
 apt-get update -qq
-apt-get install -y -qq python3 python3-venv python3-dev bluetooth bluez libglib2.0-dev > /dev/null
+apt-get install -y -qq bluetooth bluez > /dev/null
 
 if ! systemctl is-active --quiet bluetooth; then
     systemctl enable --now bluetooth
 fi
 
-# --- Python venv + package ------------------------------------------------
-
-info "Creating virtual environment at ${VENV_DIR}..."
 mkdir -p "${INSTALL_DIR}"
-python3 -m venv "${VENV_DIR}"
 
-info "Installing hubble-gateway-service..."
-"${VENV_DIR}/bin/pip" install --quiet --upgrade pip
-"${VENV_DIR}/bin/pip" install --quiet hubble-gateway-service
+# --- Detect architecture ---------------------------------------------------
 
-VERSION=$("${VENV_DIR}/bin/hubble-gateway" --version | awk '{print $2}')
-info "Installed hubble-gateway ${VERSION}"
+ARCH=$(uname -m)
+case "${ARCH}" in
+    aarch64|arm64) BINARY_NAME="hubble-gateway-aarch64-linux" ;;
+    x86_64)        BINARY_NAME="hubble-gateway-x86_64-linux" ;;
+    *)             BINARY_NAME="" ;;
+esac
+
+# --- Install: binary (preferred) or pip (fallback) ------------------------
+
+INSTALLED_VIA=""
+EXEC_PATH=""
+
+if ! $FORCE_PIP && [[ -n "${BINARY_NAME}" ]]; then
+    DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/${BINARY_NAME}"
+    info "Downloading ${BINARY_NAME}..."
+    if curl -fsSL "${DOWNLOAD_URL}" -o "${BIN_PATH}" 2>/dev/null; then
+        chmod +x "${BIN_PATH}"
+        INSTALLED_VIA="binary"
+        EXEC_PATH="${BIN_PATH}"
+        info "Installed binary to ${BIN_PATH}"
+    else
+        warn "Binary not available, falling back to pip install"
+    fi
+fi
+
+if [[ -z "${INSTALLED_VIA}" ]]; then
+    info "Installing via pip..."
+    apt-get install -y -qq python3 python3-venv python3-dev libglib2.0-dev > /dev/null
+    python3 -m venv "${VENV_DIR}"
+    "${VENV_DIR}/bin/pip" install --quiet --upgrade pip
+    "${VENV_DIR}/bin/pip" install --quiet hubble-gateway-service
+    INSTALLED_VIA="pip"
+    EXEC_PATH="${VENV_DIR}/bin/hubble-gateway"
+    info "Installed via pip to ${VENV_DIR}"
+fi
 
 # --- Environment file -----------------------------------------------------
 
@@ -128,7 +160,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 EnvironmentFile=${ENV_FILE}
-ExecStart=${VENV_DIR}/bin/hubble-gateway
+ExecStart=${EXEC_PATH}
 Restart=always
 RestartSec=10
 WatchdogSec=300
@@ -143,7 +175,7 @@ systemctl enable --now "${SERVICE_NAME}"
 # --- Done -----------------------------------------------------------------
 
 info ""
-info "Hubble Gateway is running!"
+info "Hubble Gateway is running! (installed via ${INSTALLED_VIA})"
 info ""
 info "  Status:  sudo systemctl status ${SERVICE_NAME}"
 info "  Logs:    sudo journalctl -u ${SERVICE_NAME} -f"

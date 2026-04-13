@@ -2,12 +2,16 @@
 
 Ready-to-run BLE gateway daemon for [Hubble Network](https://hubblenetwork.com). Scans for Bluetooth Low Energy devices and uploads sightings to the Hubble cloud. Built on the [hubble-gateway SDK](https://github.com/HubbleNetwork/gateway-sdk-python).
 
-## Raspberry Pi — one-line install
+## Install
+
+### One-line install (Raspberry Pi / Linux)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh \
   | sudo bash -s -- --sdk-key <YOUR_SDK_KEY>
 ```
+
+The installer downloads a single pre-built binary (no Python required), writes your config, and registers a systemd service. Falls back to pip if no binary is available for your architecture.
 
 With GPS:
 
@@ -23,9 +27,21 @@ curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/
   | sudo bash -s -- --uninstall
 ```
 
-The installer sets up a Python venv at `/opt/hubble-gateway`, installs the package, and registers a `hubble-gateway` systemd service that starts on boot.
+### Download binary directly
 
-## Manual install
+Pre-built binaries for each release — no Python needed:
+
+```bash
+# Raspberry Pi (aarch64)
+curl -fsSL https://github.com/HubbleNetwork/gateway-service/releases/latest/download/hubble-gateway-aarch64-linux \
+  -o /usr/local/bin/hubble-gateway && chmod +x /usr/local/bin/hubble-gateway
+
+# x86_64 Linux
+curl -fsSL https://github.com/HubbleNetwork/gateway-service/releases/latest/download/hubble-gateway-x86_64-linux \
+  -o /usr/local/bin/hubble-gateway && chmod +x /usr/local/bin/hubble-gateway
+```
+
+### pip / uv
 
 ```bash
 pip install hubble-gateway-service
@@ -111,18 +127,21 @@ WantedBy=multi-user.target
 
 ```
 hubble-gateway-service (this repo)
-  └─ daemon.py          — orchestration, signal handling, stats loop
-  └─ cli.py             — argument parsing, env wiring
-  └─ install.sh         — one-line Pi installer
+  ├─ daemon.py            orchestration, signal handling, stats loop
+  ├─ cli.py               argument parsing, env wiring
+  ├─ install.sh           one-line installer (binary or pip)
+  └─ release.yml          GitHub Actions → PyApp single-binary builds
 
 hubble-gateway SDK (gateway-sdk-python)
-  └─ Scanner            — BLE scanning via bleak
-  └─ GatewaySender      — packet batching + dedup + upload
-  └─ GatewayAuth        — SDK key registration + token lifecycle
-  └─ LocationProvider    — GPS (NMEA, UBX, gpsd) + fixed
-  └─ Settings            — pydantic-settings config
-  └─ BLEPacket, Location — data models
+  ├─ Scanner              BLE scanning via bleak
+  ├─ GatewaySender        packet batching + dedup + upload
+  ├─ GatewayAuth          SDK key registration + token lifecycle
+  ├─ LocationProvider      GPS (NMEA, UBX, gpsd) + fixed
+  ├─ Settings             pydantic-settings config
+  └─ BLEPacket, Location  data models
 ```
+
+The service binary is built with [PyApp](https://github.com/ofek/pyapp) — a Rust wrapper that embeds a Python distribution. First run bootstraps the environment (~5s), subsequent runs start instantly.
 
 ## Building a custom gateway
 
