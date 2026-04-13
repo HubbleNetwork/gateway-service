@@ -2,7 +2,7 @@
 # Hubble Gateway SDK — one-line installer for Raspberry Pi
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-sdk-python/main/scripts/install.sh | sudo bash -s -- --sdk-key <YOUR_KEY>
+#   curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh | sudo bash -s -- --sdk-key <YOUR_KEY>
 #
 # Options:
 #   --sdk-key KEY        SDK key (required)
