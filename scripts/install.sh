@@ -92,9 +92,9 @@ info "Creating virtual environment at ${VENV_DIR}..."
 mkdir -p "${INSTALL_DIR}"
 python3 -m venv "${VENV_DIR}"
 
-info "Installing hubble-gateway..."
+info "Installing hubble-gateway-service..."
 "${VENV_DIR}/bin/pip" install --quiet --upgrade pip
-"${VENV_DIR}/bin/pip" install --quiet "hubble-gateway[gps]"
+"${VENV_DIR}/bin/pip" install --quiet hubble-gateway-service
 
 VERSION=$("${VENV_DIR}/bin/hubble-gateway" --version | awk '{print $2}')
 info "Installed hubble-gateway ${VERSION}"

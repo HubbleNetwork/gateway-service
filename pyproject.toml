@@ -3,49 +3,42 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hubble-gateway"
+name = "hubble-gateway-service"
 version = "0.1.0"
-description = "Open-source BLE gateway SDK for Hubble Network"
+description = "Ready-to-run BLE gateway daemon for Hubble Network, powered by the hubble-gateway SDK"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
 authors = [{ name = "Hubble Network", email = "dev@hubblenetwork.com" }]
-keywords = ["ble", "bluetooth", "gateway", "iot", "hubble"]
+keywords = ["ble", "bluetooth", "gateway", "iot", "hubble", "daemon"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "Topic :: Home Automation",
     "Topic :: System :: Networking",
 ]
 dependencies = [
-    "bleak>=0.21.0",
-    "httpx>=0.25.0",
-    "pydantic>=2.5.0",
-    "pydantic-settings>=2.1.0",
+    "hubble-gateway[gps]>=0.1.0",
     "structlog>=23.2.0",
 ]
 
 [project.optional-dependencies]
-gps = ["pyserial-asyncio>=0.6", "gpsd-py3>=0.3.0"]
-all = ["hubble-gateway[gps]"]
-dev = ["hubble-gateway[all]", "pytest>=7.0", "pytest-asyncio>=0.21", "ruff>=0.1.0"]
+dev = ["pytest>=7.0", "pytest-asyncio>=0.21", "ruff>=0.1.0"]
 
 [project.scripts]
-hubble-gateway = "hubble_gateway.cli:main"
+hubble-gateway = "hubble_gateway_service.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/HubbleNetwork/gateway-sdk-python"
-Documentation = "https://github.com/HubbleNetwork/gateway-sdk-python#readme"
-Repository = "https://github.com/HubbleNetwork/gateway-sdk-python"
-Issues = "https://github.com/HubbleNetwork/gateway-sdk-python/issues"
+Homepage = "https://github.com/HubbleNetwork/gateway-service"
+Documentation = "https://github.com/HubbleNetwork/gateway-service#readme"
+Repository = "https://github.com/HubbleNetwork/gateway-service"
+SDK = "https://github.com/HubbleNetwork/gateway-sdk-python"
+Issues = "https://github.com/HubbleNetwork/gateway-service/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/hubble_gateway"]
+packages = ["src/hubble_gateway_service"]
 
 [tool.ruff]
 target-version = "py310"

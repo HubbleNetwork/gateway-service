@@ -1,11 +1,11 @@
-"""CLI entry point for the Hubble Gateway SDK."""
+"""CLI entry point for the Hubble Gateway Service."""
 
 import argparse
 import asyncio
 import os
 import sys
 
-from hubble_gateway import __version__
+import hubble_gateway
 
 
 def main() -> None:
@@ -13,7 +13,10 @@ def main() -> None:
         prog="hubble-gateway",
         description="Hubble Network BLE Gateway — scans for BLE devices and uploads to the Hubble cloud",
     )
-    parser.add_argument("--version", action="version", version=f"hubble-gateway {__version__}")
+    parser.add_argument(
+        "--version", action="version",
+        version=f"hubble-gateway-service {hubble_gateway.__version__}",
+    )
     parser.add_argument("--sdk-key", help="SDK key (or set HUBBLE_SDK_KEY env var)")
     parser.add_argument("--api-url", help="Gateway API base URL")
     parser.add_argument("--adapter", help="BLE adapter (e.g. hci1 for USB dongle)")
@@ -28,26 +31,27 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if args.sdk_key:
-        os.environ["HUBBLE_SDK_KEY"] = args.sdk_key
-    if args.api_url:
-        os.environ["HUBBLE_API_BASE_URL"] = args.api_url
-    if args.adapter:
-        os.environ["HUBBLE_BLE_ADAPTER"] = args.adapter
+    env_map = {
+        "sdk_key": "HUBBLE_SDK_KEY",
+        "api_url": "HUBBLE_API_BASE_URL",
+        "adapter": "HUBBLE_BLE_ADAPTER",
+        "gps_port": "HUBBLE_GPS_PORT",
+        "gps_module": "HUBBLE_GPS_MODULE",
+        "log_level": "HUBBLE_LOG_LEVEL",
+    }
+    for attr, env_var in env_map.items():
+        val = getattr(args, attr, None)
+        if val is not None:
+            os.environ[env_var] = str(val)
+
     if args.gps:
         os.environ["HUBBLE_GPS_ENABLED"] = "true"
-    if args.gps_port:
-        os.environ["HUBBLE_GPS_PORT"] = args.gps_port
     if args.gps_baud:
         os.environ["HUBBLE_GPS_BAUD_RATE"] = str(args.gps_baud)
-    if args.gps_module:
-        os.environ["HUBBLE_GPS_MODULE"] = args.gps_module
     if args.lat is not None:
         os.environ["HUBBLE_LATITUDE"] = str(args.lat)
     if args.lon is not None:
         os.environ["HUBBLE_LONGITUDE"] = str(args.lon)
-    if args.log_level:
-        os.environ["HUBBLE_LOG_LEVEL"] = args.log_level
     if args.log_text:
         os.environ["HUBBLE_LOG_JSON"] = "false"
 
@@ -61,9 +65,10 @@ def main() -> None:
         )
         sys.exit(1)
 
-    print(f"Hubble Gateway SDK v{__version__}")
+    print(f"Hubble Gateway Service (SDK v{hubble_gateway.__version__})")
     print(f"  SDK key: {sdk_key[:8]}...{sdk_key[-4:]}")
     print()
 
-    from hubble_gateway.daemon import run
+    from hubble_gateway_service.daemon import run
+
     asyncio.run(run())

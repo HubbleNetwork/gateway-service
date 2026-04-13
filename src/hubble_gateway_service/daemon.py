@@ -1,4 +1,4 @@
-"""Main daemon: orchestrates scanner, sender, and location provider."""
+"""Gateway daemon: orchestrates SDK components into a running service."""
 
 import asyncio
 import signal
@@ -6,13 +6,15 @@ import sys
 
 import structlog
 
-from hubble_gateway import __version__
-from hubble_gateway.auth import GatewayAuth
-from hubble_gateway.config import Settings
-from hubble_gateway.location import create_location_provider
-from hubble_gateway.models import BLEPacket
-from hubble_gateway.scanner import Scanner
-from hubble_gateway.sender import GatewaySender
+import hubble_gateway
+from hubble_gateway import (
+    BLEPacket,
+    GatewayAuth,
+    GatewaySender,
+    Scanner,
+    Settings,
+    create_location_provider,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -45,7 +47,7 @@ async def run() -> None:
 
     logger.info(
         "Starting Hubble Gateway",
-        version=__version__,
+        version=hubble_gateway.__version__,
         sdk_key=f"{settings.sdk_key[:8]}...",
         api_url=settings.api_base_url,
     )
@@ -74,12 +76,7 @@ async def run() -> None:
     )
 
     loc = await location_provider.get_location()
-    logger.info(
-        "Location provider ready",
-        source=loc.source,
-        lat=loc.latitude,
-        lon=loc.longitude,
-    )
+    logger.info("Location provider ready", source=loc.source, lat=loc.latitude, lon=loc.longitude)
 
     auth = GatewayAuth(
         sdk_key=settings.sdk_key,
@@ -89,7 +86,7 @@ async def run() -> None:
     await auth.start()
 
     if not await auth.ensure_authenticated():
-        logger.error("Gateway registration failed — check your SDK key and network connectivity")
+        logger.error("Registration failed — check SDK key and network connectivity")
         await auth.stop()
         sys.exit(1)
 
@@ -114,7 +111,9 @@ async def run() -> None:
 
     scanner_task = asyncio.create_task(scanner.start())
     heartbeat_task = asyncio.create_task(_heartbeat_loop(auth, shutdown_event))
-    stats_task = asyncio.create_task(_stats_loop(sender, scanner, location_provider, shutdown_event))
+    stats_task = asyncio.create_task(
+        _stats_loop(sender, scanner, location_provider, shutdown_event)
+    )
 
     logger.info(
         "Gateway running",

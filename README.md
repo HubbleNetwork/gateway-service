@@ -1,79 +1,45 @@
-# Hubble Gateway SDK for Python
+# Hubble Gateway Service
 
-Open-source BLE gateway that scans for Bluetooth Low Energy devices and uploads sightings to the [Hubble Network](https://hubblenetwork.com) cloud. Runs as a background daemon on a Raspberry Pi or any Linux host with a BLE adapter.
+Ready-to-run BLE gateway daemon for [Hubble Network](https://hubblenetwork.com). Scans for Bluetooth Low Energy devices and uploads sightings to the Hubble cloud. Built on the [hubble-gateway SDK](https://github.com/HubbleNetwork/gateway-sdk-python).
 
-## Features
-
-- **Multi-UUID BLE scanning** — Hubble (`FCA6`) and Tile (`FEED`) service UUIDs out of the box
-- **USB dongle support** — use the built-in BLE adapter or plug in a USB BLE dongle (`hci1`)
-- **GPS integration** — serial NMEA hats, u-blox UBX receivers (ZED-F9P), or `gpsd`
-- **Automatic registration** — SDK-key-based auth with token persistence across restarts
-- **Deduplication** — Android-SDK-compatible `(address, uuid, payload)` dedup with sighting counts
-- **Structured logging** — JSON or human-readable logs via `structlog`
-- **Graceful shutdown** — responds to `SIGTERM`/`SIGINT` cleanly
-
-## Quick Start
-
-### Raspberry Pi — one-line install
-
-SSH into your Pi and run:
+## Raspberry Pi — one-line install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-sdk-python/main/scripts/install.sh \
+curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh \
   | sudo bash -s -- --sdk-key <YOUR_SDK_KEY>
 ```
 
-This installs the gateway into `/opt/hubble-gateway`, registers a `hubble-gateway` systemd service, and starts scanning immediately. Logs stream to journald:
+With GPS:
 
 ```bash
-sudo journalctl -u hubble-gateway -f
-```
-
-With GPS enabled:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-sdk-python/main/scripts/install.sh \
+curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh \
   | sudo bash -s -- --sdk-key <YOUR_SDK_KEY> --gps --gps-port /dev/ttyAMA0
 ```
 
-To uninstall:
+Uninstall:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-sdk-python/main/scripts/install.sh \
+curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh \
   | sudo bash -s -- --uninstall
 ```
 
-### Manual install
+The installer sets up a Python venv at `/opt/hubble-gateway`, installs the package, and registers a `hubble-gateway` systemd service that starts on boot.
+
+## Manual install
 
 ```bash
-pip install hubble-gateway
-```
-
-Or with [uv](https://docs.astral.sh/uv/):
-
-```bash
-uv pip install hubble-gateway
-```
-
-With GPS support (serial NMEA or gpsd):
-
-```bash
-pip install "hubble-gateway[gps]"
+pip install hubble-gateway-service
 # or
-uv pip install "hubble-gateway[gps]"
+uv pip install hubble-gateway-service
 ```
 
-### Get your SDK key
-
-Sign up at [dashboard.hubble.com](https://dashboard.hubble.com) and create a gateway SDK key.
-
-### Run manually
+## Usage
 
 ```bash
 hubble-gateway --sdk-key hsk_your_key_here
 ```
 
-Or use environment variables:
+Or with environment variables:
 
 ```bash
 export HUBBLE_SDK_KEY=hsk_your_key_here
@@ -82,72 +48,45 @@ hubble-gateway
 
 ## Configuration
 
-All settings can be passed via CLI flags, environment variables (prefixed with `HUBBLE_`), or a `.env` file.
+All settings via CLI flags, environment variables (prefixed `HUBBLE_`), or a `.env` file.
 
 | Environment Variable | CLI Flag | Default | Description |
 |---|---|---|---|
 | `HUBBLE_SDK_KEY` | `--sdk-key` | *(required)* | SDK key from Hubble dashboard |
 | `HUBBLE_API_BASE_URL` | `--api-url` | `https://gw-api.hubble.com` | Gateway API URL |
-| `HUBBLE_BLE_ADAPTER` | `--adapter` | *(auto)* | BLE adapter (`hci0`, `hci1`, etc.) |
-| `HUBBLE_SERVICE_UUIDS` | — | FCA6, FEED | BLE service UUIDs to scan |
+| `HUBBLE_BLE_ADAPTER` | `--adapter` | *(auto)* | BLE adapter (`hci0`, `hci1`) |
 | `HUBBLE_SCAN_DURATION_SECONDS` | — | `5.0` | Seconds per scan cycle |
 | `HUBBLE_BATCH_SIZE` | — | `500` | Max packets per upload batch |
 | `HUBBLE_UPLOAD_INTERVAL_SECONDS` | — | `5.0` | Seconds between uploads |
-| `HUBBLE_DEDUP_WINDOW_SECONDS` | — | `300.0` | Deduplication window |
+| `HUBBLE_DEDUP_WINDOW_SECONDS` | — | `300.0` | Dedup window |
 | `HUBBLE_LATITUDE` | `--lat` | — | Fixed latitude |
 | `HUBBLE_LONGITUDE` | `--lon` | — | Fixed longitude |
 | `HUBBLE_GPS_ENABLED` | `--gps` | `false` | Enable GPS |
 | `HUBBLE_GPS_PORT` | `--gps-port` | `/dev/ttyAMA0` | GPS serial port |
 | `HUBBLE_GPS_BAUD_RATE` | `--gps-baud` | `9600` | GPS baud rate |
 | `HUBBLE_GPS_MODULE` | `--gps-module` | `nmea` | `nmea` or `zed_f9p` |
-| `HUBBLE_LOG_LEVEL` | `--log-level` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `HUBBLE_LOG_JSON` | `--log-text` | `true` | JSON logs (use `--log-text` for readable) |
+| `HUBBLE_LOG_LEVEL` | `--log-level` | `INFO` | Log level |
+| `HUBBLE_LOG_JSON` | `--log-text` | `true` | JSON logs |
 
 ## GPS Support
 
-### Generic NMEA GPS Hat
-
-Most Raspberry Pi GPS hats (Adafruit Ultimate GPS, SparkFun GPS, etc.) output NMEA over a serial UART:
-
-```bash
-hubble-gateway --sdk-key $KEY --gps --gps-port /dev/ttyAMA0
-```
-
-### u-blox ZED-F9P (UBX binary)
-
-For high-precision GNSS receivers:
-
-```bash
-hubble-gateway --sdk-key $KEY --gps --gps-module zed_f9p --gps-port /dev/ttyAMA3 --gps-baud 38400
-```
-
-### gpsd
-
-If you have `gpsd` running and `gpsd-py3` installed, the SDK will fall back to it when serial GPS is unavailable.
-
-### Fixed Location
-
-No GPS? Just set static coordinates:
-
-```bash
-hubble-gateway --sdk-key $KEY --lat 37.7749 --lon -122.4194
-```
+| Module | Flag | Description |
+|---|---|---|
+| NMEA hat | `--gps --gps-port /dev/ttyAMA0` | Adafruit, SparkFun, etc. |
+| u-blox ZED-F9P | `--gps --gps-module zed_f9p --gps-port /dev/ttyAMA3 --gps-baud 38400` | High-precision UBX |
+| gpsd | `--gps` | Falls back to gpsd when serial unavailable |
+| Fixed | `--lat 37.77 --lon -122.42` | No GPS hardware |
 
 ## USB BLE Dongle
 
-To use an external USB BLE adapter instead of (or alongside) the built-in one:
-
 ```bash
-# Find your adapter
-hciconfig
-
-# Use hci1 (USB dongle)
+hciconfig                          # find your adapter
 hubble-gateway --sdk-key $KEY --adapter hci1
 ```
 
-## Running as a Service
+## Running as a systemd service
 
-The [one-line installer](#raspberry-pi--one-line-install) sets up systemd automatically. If you installed manually, create the service yourself:
+The [one-line installer](#raspberry-pi--one-line-install) handles this automatically. For manual setup:
 
 ```ini
 # /etc/systemd/system/hubble-gateway.service
@@ -168,39 +107,36 @@ WatchdogSec=300
 WantedBy=multi-user.target
 ```
 
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now hubble-gateway
-sudo journalctl -u hubble-gateway -f
+## Architecture
+
+```
+hubble-gateway-service (this repo)
+  └─ daemon.py          — orchestration, signal handling, stats loop
+  └─ cli.py             — argument parsing, env wiring
+  └─ install.sh         — one-line Pi installer
+
+hubble-gateway SDK (gateway-sdk-python)
+  └─ Scanner            — BLE scanning via bleak
+  └─ GatewaySender      — packet batching + dedup + upload
+  └─ GatewayAuth        — SDK key registration + token lifecycle
+  └─ LocationProvider    — GPS (NMEA, UBX, gpsd) + fixed
+  └─ Settings            — pydantic-settings config
+  └─ BLEPacket, Location — data models
 ```
 
-## Development
+## Building a custom gateway
+
+If you need more control, use the SDK directly:
 
 ```bash
-git clone https://github.com/HubbleNetwork/gateway-sdk-python.git
-cd gateway-sdk-python
-
-# With uv (recommended)
-uv venv && source .venv/bin/activate
-uv pip install -e ".[dev]"
-
-# Or with pip
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+pip install hubble-gateway
 ```
 
-## Supported Hardware
+```python
+from hubble_gateway import Scanner, GatewaySender, GatewayAuth
 
-| Hardware | Type | Support |
-|---|---|---|
-| Raspberry Pi 3B+/4/5 | Host | Built-in BLE + GPIO GPS |
-| Any Linux with BlueZ | Host | Internal BLE adapter |
-| USB BLE 5.0 dongle | BLE | Via `--adapter hci1` |
-| Adafruit Ultimate GPS | GPS | NMEA serial |
-| SparkFun GPS-RTK | GPS | NMEA serial |
-| u-blox ZED-F9P | GPS | UBX binary (`zed_f9p`) |
-| u-blox NEO-M9N | GPS | UBX binary (`zed_f9p`) |
-| Any gpsd-compatible | GPS | Via `gpsd` fallback |
+# See https://github.com/HubbleNetwork/gateway-sdk-python
+```
 
 ## License
 
