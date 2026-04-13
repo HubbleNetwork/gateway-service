@@ -14,23 +14,60 @@ Open-source BLE gateway that scans for Bluetooth Low Energy devices and uploads 
 
 ## Quick Start
 
-### 1. Install
+### Raspberry Pi — one-line install
+
+SSH into your Pi and run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-sdk-python/main/scripts/install.sh \
+  | sudo bash -s -- --sdk-key <YOUR_SDK_KEY>
+```
+
+This installs the gateway into `/opt/hubble-gateway`, registers a `hubble-gateway` systemd service, and starts scanning immediately. Logs stream to journald:
+
+```bash
+sudo journalctl -u hubble-gateway -f
+```
+
+With GPS enabled:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-sdk-python/main/scripts/install.sh \
+  | sudo bash -s -- --sdk-key <YOUR_SDK_KEY> --gps --gps-port /dev/ttyAMA0
+```
+
+To uninstall:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-sdk-python/main/scripts/install.sh \
+  | sudo bash -s -- --uninstall
+```
+
+### Manual install
 
 ```bash
 pip install hubble-gateway
+```
+
+Or with [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv pip install hubble-gateway
 ```
 
 With GPS support (serial NMEA or gpsd):
 
 ```bash
 pip install "hubble-gateway[gps]"
+# or
+uv pip install "hubble-gateway[gps]"
 ```
 
-### 2. Get your SDK key
+### Get your SDK key
 
 Sign up at [dashboard.hubble.com](https://dashboard.hubble.com) and create a gateway SDK key.
 
-### 3. Run
+### Run manually
 
 ```bash
 hubble-gateway --sdk-key hsk_your_key_here
@@ -110,7 +147,7 @@ hubble-gateway --sdk-key $KEY --adapter hci1
 
 ## Running as a Service
 
-Create a systemd service for automatic start on boot:
+The [one-line installer](#raspberry-pi--one-line-install) sets up systemd automatically. If you installed manually, create the service yourself:
 
 ```ini
 # /etc/systemd/system/hubble-gateway.service
@@ -121,13 +158,11 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=root
-Environment=HUBBLE_SDK_KEY=hsk_your_key_here
-Environment=HUBBLE_GPS_ENABLED=true
-Environment=HUBBLE_GPS_PORT=/dev/ttyAMA0
-ExecStart=/usr/local/bin/hubble-gateway
+EnvironmentFile=/opt/hubble-gateway/.env
+ExecStart=/opt/hubble-gateway/venv/bin/hubble-gateway
 Restart=always
 RestartSec=10
+WatchdogSec=300
 
 [Install]
 WantedBy=multi-user.target
@@ -144,8 +179,13 @@ sudo journalctl -u hubble-gateway -f
 ```bash
 git clone https://github.com/HubbleNetwork/gateway-sdk-python.git
 cd gateway-sdk-python
-python -m venv .venv
-source .venv/bin/activate
+
+# With uv (recommended)
+uv venv && source .venv/bin/activate
+uv pip install -e ".[dev]"
+
+# Or with pip
+python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
