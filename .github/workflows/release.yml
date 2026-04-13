@@ -29,10 +29,10 @@ jobs:
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
+            os: ubuntu-22.04
             artifact: hubble-gateway-x86_64-linux
           - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
+            os: ubuntu-22.04
             artifact: hubble-gateway-aarch64-linux
 
     runs-on: ${{ matrix.os }}
