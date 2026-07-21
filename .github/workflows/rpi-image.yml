@@ -1,0 +1,153 @@
+name: Raspberry Pi Image
+
+# Builds a flashable Raspberry Pi image for the gateway using rpi-image-gen
+# (see rpi-image/). Runs on native arm64 runners (no qemu needed).
+#
+# Triggers:
+#   - workflow_dispatch: build on demand, choosing device model / gateway version.
+#   - push tag image-v*: build the default models and attach them to a release.
+#
+# The image bakes/downloads the hubble-gateway daemon at build time. When
+# hubble.install_method=binary (default) the build pulls the aarch64 release
+# binary from this repo's GitHub releases, so make sure the requested
+# gateway_version has published binaries (see release.yml) before building.
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: "Target Raspberry Pi model"
+        type: choice
+        default: rpi5
+        options: [rpi5, rpi4, rpi3, zero2w, cm4, cm5]
+      gateway_version:
+        description: "hubble-gateway version to install (latest or a tag like v0.1.0)"
+        type: string
+        default: latest
+      install_method:
+        description: "How to install the daemon"
+        type: choice
+        default: binary
+        options: [binary, pip]
+      rpi_image_gen_ref:
+        description: "rpi-image-gen git ref to build with"
+        type: string
+        default: master
+  push:
+    tags: ["image-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  # Decide which device models to build for this run.
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      devices: ${{ steps.set.outputs.devices }}
+    steps:
+      - id: set
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "devices=[\"${{ github.event.inputs.device }}\"]" >> "$GITHUB_OUTPUT"
+          else
+            echo 'devices=["rpi5","rpi4"]' >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: matrix
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ${{ fromJSON(needs.matrix.outputs.devices) }}
+    env:
+      GATEWAY_VERSION: ${{ github.event.inputs.gateway_version || 'latest' }}
+      INSTALL_METHOD: ${{ github.event.inputs.install_method || 'binary' }}
+      RIG_REF: ${{ github.event.inputs.rpi_image_gen_ref || 'master' }}
+    steps:
+      - name: Checkout gateway-service
+        uses: actions/checkout@v4
+        with:
+          path: gateway-service
+
+      - name: Checkout rpi-image-gen
+        uses: actions/checkout@v4
+        with:
+          repository: raspberrypi/rpi-image-gen
+          ref: ${{ env.RIG_REF }}
+          path: rpi-image-gen
+
+      - name: Install rpi-image-gen dependencies
+        working-directory: rpi-image-gen
+        run: |
+          sudo apt-get update
+          sudo chmod o+x /home/runner
+          sudo ./install_deps.sh
+
+      - name: Generate build config for ${{ matrix.device }}
+        run: |
+          cat > gateway-service/rpi-image/config/ci.yaml <<EOF
+          include:
+            file: hubble-gateway.yaml
+
+          device:
+            layer: ${{ matrix.device }}
+
+          image:
+            name: hubble-gateway-${{ matrix.device }}
+
+          hubble:
+            version: ${GATEWAY_VERSION}
+            install_method: ${INSTALL_METHOD}
+          EOF
+          echo "----- ci.yaml -----"
+          cat gateway-service/rpi-image/config/ci.yaml
+
+      - name: Build image
+        working-directory: rpi-image-gen
+        env:
+          HOST_BUILD_DIR: ${{ github.workspace }}/out
+        run: |
+          export SOURCE_DATE_EPOCH="$(date -d 'today 00:00:00' +%s)"
+          ./rpi-image-gen build \
+            -S "${{ github.workspace }}/gateway-service/rpi-image" \
+            -c ci.yaml
+
+      - name: Package artifacts
+        id: pkg
+        run: |
+          set -euo pipefail
+          OUT="${{ github.workspace }}/out"
+          mkdir -p dist
+          IMG="$(find "$OUT" -type f -name '*.img' | sort | tail -n1 || true)"
+          if [ -z "$IMG" ]; then
+            echo "No .img produced under $OUT" >&2
+            find "$OUT" -maxdepth 3 -type f | sort >&2
+            exit 1
+          fi
+          BASENAME="hubble-gateway-${{ matrix.device }}-${GATEWAY_VERSION}"
+          cp "$IMG" "dist/${BASENAME}.img"
+          echo "Compressing $(du -h "dist/${BASENAME}.img" | cut -f1) image..."
+          xz -T0 -9 "dist/${BASENAME}.img"
+          # Include the image-description JSON / SBOM if the build produced them.
+          find "$OUT" -type f \( -name '*.json' -o -name '*sbom*' \) \
+            -exec cp {} "dist/" \; 2>/dev/null || true
+          ( cd dist && sha256sum * > "${BASENAME}.sha256" )
+          echo "basename=${BASENAME}" >> "$GITHUB_OUTPUT"
+          ls -l dist
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pkg.outputs.basename }}
+          path: dist/*
+          retention-days: 14
+
+      - name: Attach to release (tag builds)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

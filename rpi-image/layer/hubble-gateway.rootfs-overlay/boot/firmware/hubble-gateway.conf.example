@@ -1,0 +1,33 @@
+# Hubble Gateway configuration.
+#
+# HOW TO USE:
+#   1. After flashing, this file appears on the small FAT partition that mounts
+#      as "bootfs" when you plug the SD card / USB into your computer.
+#   2. Copy or rename this file to "hubble-gateway.conf" (same folder).
+#   3. Fill in at least SDK_KEY and a location (LAT/LON or GPS=true).
+#   4. Eject, boot the Pi. On first boot the values are applied and the file is
+#      renamed to hubble-gateway.conf.applied so your key isn't left in plaintext.
+#
+# Wifi/ethernet: prefer Raspberry Pi Imager's built-in customization for wifi.
+# Ethernet needs nothing (DHCP). The WIFI_* keys below are a fallback if you
+# did not set wifi in Imager.
+
+# --- Required ---------------------------------------------------------------
+SDK_KEY=hsk_replace_with_your_key
+
+# --- Location (required: set LAT+LON, OR set GPS=true) ----------------------
+LAT=37.7749
+LON=-122.4194
+#GPS=true
+#GPS_PORT=/dev/ttyAMA0
+#GPS_BAUD=9600
+#GPS_MODULE=nmea        # nmea | zed_f9p
+
+# --- Optional ---------------------------------------------------------------
+#ADAPTER=hci1           # USB BLE dongle
+#API_URL=https://gw-api.hubble.com
+
+# --- Wifi fallback (only if you did not use Imager's wifi customization) ----
+#WIFI_SSID=my-network
+#WIFI_PSK=my-password
+#WIFI_COUNTRY=US

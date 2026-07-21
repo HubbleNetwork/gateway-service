@@ -1,0 +1,17 @@
+[Unit]
+Description=Hubble Gateway boot-time provisioning (SDK key / location / wifi)
+Documentation=https://github.com/HubbleNetwork/gateway-service
+# NetworkManager must be up so we can install a wifi connection profile from the
+# boot-partition config as a fallback to Imager's native wifi customization.
+After=NetworkManager.service
+Wants=NetworkManager.service
+# Populate /opt/hubble-gateway/.env before the gateway starts.
+Before=hubble-gateway.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/hubble-provision
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,28 @@
+#!/bin/sh
+# Discrete customize-phase hook. Runs AFTER rpi-image-gen has applied this
+# project's rootfs-overlay, so the systemd units and provisioner script are
+# present in the rootfs by the time we enable them.
+#
+# $1 = path to the target rootfs.
+set -eu
+
+ROOT="$1"
+WANTS="${ROOT}/etc/systemd/system/multi-user.target.wants"
+
+mkdir -p "$WANTS"
+
+for unit in hubble-provision.service hubble-gateway.service; do
+    if [ -f "${ROOT}/etc/systemd/system/${unit}" ]; then
+        ln -sf "/etc/systemd/system/${unit}" "${WANTS}/${unit}"
+        echo "customize90-hubble: enabled ${unit}"
+    else
+        echo "customize90-hubble: WARNING ${unit} not found in rootfs" >&2
+    fi
+done
+
+# Ensure the provisioner is executable (rsync -a preserves the source mode).
+if [ -f "${ROOT}/usr/local/sbin/hubble-provision" ]; then
+    chmod 0755 "${ROOT}/usr/local/sbin/hubble-provision"
+fi
+
+exit 0

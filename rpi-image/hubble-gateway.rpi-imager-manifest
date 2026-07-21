@@ -1,0 +1,24 @@
+{
+  "imager": {
+    "latest_version": "2.0.0",
+    "url": "https://downloads.raspberrypi.org/imager/imager_latest.exe"
+  },
+  "os_list": [
+    {
+      "name": "Hubble Gateway",
+      "description": "Hubble Network BLE gateway appliance (auto-starts on boot).",
+      "icon": "https://www.raspberrypi.com/app/uploads/2022/02/COLOUR-Raspberry-Pi-Symbol-Registered.png",
+      "url": "file:///ABSOLUTE/PATH/TO/hubble-gateway.img.xz",
+      "release_date": "2026-07-21",
+      "init_format": "systemd",
+      "devices": [
+        "pi5-64bit",
+        "pi4-64bit",
+        "pi3-64bit",
+        "pi-zero2w-64bit",
+        "cm4-64bit",
+        "cm5-64bit"
+      ]
+    }
+  ]
+}

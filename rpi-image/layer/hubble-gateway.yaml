@@ -1,0 +1,172 @@
+# METABEGIN
+# X-Env-Layer-Name: hubble-gateway
+# X-Env-Layer-Version: 1.0.0
+# X-Env-Layer-Category: application
+# X-Env-Layer-Desc: Hubble Network BLE gateway appliance. Installs the
+#  hubble-gateway daemon, a systemd service that starts it on boot, and a
+#  boot-time provisioner that reads the SDK key / location / (optional) wifi
+#  from a file on the FAT boot partition. Networking is NetworkManager (wired
+#  DHCP works out of the box; wifi via Raspberry Pi Imager customization or the
+#  boot-partition config). BlueZ provides the BLE stack. raspberrypi-sys-mods
+#  provides the imager_custom helpers that Imager's firstrun.sh calls so that
+#  Imager's native wifi / ssh / hostname customization works on this image.
+#
+# Base building blocks mirror the bookworm-minbase suite, but swap the default
+# systemd-networkd stack for NetworkManager (so a single network-activator
+# provider exists) and add BlueZ + wireless regulatory + CA certificates.
+# X-Env-Layer-Requires: debian-bookworm-arm64-multi,
+#  rpi-debian-bookworm,
+#  rpi-misc-utils,
+#  rpi-essential-base,
+#  rpi-misc-skel,
+#  fake-hwclock,
+#  systemd-min,
+#  network-manager,
+#  systemd-timesyncd,
+#  openssh-server,
+#  wireless-regulatory,
+#  bluez,
+#  ca-certificates
+#
+# X-Env-VarPrefix: hubble
+#
+# X-Env-Var-sdk_key:
+# X-Env-Var-sdk_key-Desc: Hubble SDK key to bake into the image at build time.
+#  Leave empty to require provisioning at flash time via the boot-partition
+#  hubble-gateway.conf file.
+# X-Env-Var-sdk_key-Required: n
+# X-Env-Var-sdk_key-Valid: string-or-empty
+# X-Env-Var-sdk_key-Set: y
+#
+# X-Env-Var-api_url:
+# X-Env-Var-api_url-Desc: Override the gateway API base URL. Empty uses the SDK
+#  default (https://gw-api.hubble.com).
+# X-Env-Var-api_url-Required: n
+# X-Env-Var-api_url-Valid: string-or-empty
+# X-Env-Var-api_url-Set: y
+#
+# X-Env-Var-lat:
+# X-Env-Var-lat-Desc: Fixed latitude for a stationary gateway. Either set
+#  lat+lon or enable gps, otherwise the daemon will refuse to start.
+# X-Env-Var-lat-Required: n
+# X-Env-Var-lat-Valid: string-or-empty
+# X-Env-Var-lat-Set: y
+#
+# X-Env-Var-lon:
+# X-Env-Var-lon-Desc: Fixed longitude for a stationary gateway.
+# X-Env-Var-lon-Required: n
+# X-Env-Var-lon-Valid: string-or-empty
+# X-Env-Var-lon-Set: y
+#
+# X-Env-Var-gps: false
+# X-Env-Var-gps-Desc: Enable a GPS module for location instead of a fixed lat/lon.
+# X-Env-Var-gps-Required: n
+# X-Env-Var-gps-Valid: keywords:true,false
+# X-Env-Var-gps-Set: y
+#
+# X-Env-Var-gps_port: /dev/ttyAMA0
+# X-Env-Var-gps_port-Desc: GPS serial port.
+# X-Env-Var-gps_port-Required: n
+# X-Env-Var-gps_port-Valid: string
+# X-Env-Var-gps_port-Set: y
+#
+# X-Env-Var-gps_baud: 9600
+# X-Env-Var-gps_baud-Desc: GPS baud rate.
+# X-Env-Var-gps_baud-Required: n
+# X-Env-Var-gps_baud-Valid: uint
+# X-Env-Var-gps_baud-Set: y
+#
+# X-Env-Var-gps_module: nmea
+# X-Env-Var-gps_module-Desc: GPS module type.
+# X-Env-Var-gps_module-Required: n
+# X-Env-Var-gps_module-Valid: keywords:nmea,zed_f9p
+# X-Env-Var-gps_module-Set: y
+#
+# X-Env-Var-adapter:
+# X-Env-Var-adapter-Desc: BLE adapter override, e.g. hci1 for a USB dongle.
+#  Empty auto-selects.
+# X-Env-Var-adapter-Required: n
+# X-Env-Var-adapter-Valid: string-or-empty
+# X-Env-Var-adapter-Set: y
+#
+# X-Env-Var-version: latest
+# X-Env-Var-version-Desc: Release to install. "latest" pulls the latest GitHub
+#  release; otherwise a tag such as v0.1.0.
+# X-Env-Var-version-Required: n
+# X-Env-Var-version-Valid: string
+# X-Env-Var-version-Set: y
+#
+# X-Env-Var-install_method: binary
+# X-Env-Var-install_method-Desc: How to install the daemon. "binary" downloads
+#  the prebuilt PyApp aarch64 binary from GitHub releases. "pip" builds a venv
+#  inside the image from PyPI.
+# X-Env-Var-install_method-Required: n
+# X-Env-Var-install_method-Valid: keywords:binary,pip
+# X-Env-Var-install_method-Set: y
+#
+# X-Env-Var-repo: HubbleNetwork/gateway-service
+# X-Env-Var-repo-Desc: GitHub owner/repo to download release binaries from.
+# X-Env-Var-repo-Required: n
+# X-Env-Var-repo-Valid: string
+# X-Env-Var-repo-Set: y
+# METAEND
+---
+mmdebstrap:
+  packages:
+    - raspberrypi-sys-mods
+    - curl
+    - iw
+  customize-hooks:
+    # --- Install the hubble-gateway daemon ---------------------------------
+    - |-
+      set -eu
+      INSTALL_DIR="$1/opt/hubble-gateway"
+      mkdir -p "$INSTALL_DIR"
+      method="${IGconf_hubble_install_method:-binary}"
+      version="${IGconf_hubble_version:-latest}"
+      repo="${IGconf_hubble_repo:-HubbleNetwork/gateway-service}"
+      artifact="hubble-gateway-aarch64-linux"
+      if [ "$method" = "binary" ]; then
+        if [ "$version" = "latest" ]; then
+          url="https://github.com/${repo}/releases/latest/download/${artifact}"
+        else
+          url="https://github.com/${repo}/releases/download/${version}/${artifact}"
+        fi
+        echo "hubble-gateway: downloading ${url}"
+        curl -fsSL "$url" -o "${INSTALL_DIR}/hubble-gateway"
+        chmod +x "${INSTALL_DIR}/hubble-gateway"
+      else
+        echo "hubble-gateway: installing via pip inside the image"
+        chroot "$1" sh -c 'apt-get update -qq && apt-get install -y -qq python3 python3-venv python3-dev libglib2.0-dev'
+        spec="hubble-gateway-service"
+        if [ "$version" != "latest" ]; then
+          spec="hubble-gateway-service==${version#v}"
+        fi
+        chroot "$1" sh -c "python3 -m venv /opt/hubble-gateway/venv && \
+          /opt/hubble-gateway/venv/bin/pip install --quiet --upgrade pip && \
+          /opt/hubble-gateway/venv/bin/pip install --quiet '${spec}'"
+        ln -sf venv/bin/hubble-gateway "${INSTALL_DIR}/hubble-gateway"
+      fi
+
+    # --- Seed the runtime env file from any build-time defaults ------------
+    - |-
+      set -eu
+      ENV_FILE="$1/opt/hubble-gateway/.env"
+      umask 077
+      : > "$ENV_FILE"
+      if [ -n "${IGconf_hubble_sdk_key:-}" ]; then echo "HUBBLE_SDK_KEY=${IGconf_hubble_sdk_key}" >> "$ENV_FILE"; fi
+      if [ -n "${IGconf_hubble_api_url:-}" ]; then echo "HUBBLE_API_BASE_URL=${IGconf_hubble_api_url}" >> "$ENV_FILE"; fi
+      if [ -n "${IGconf_hubble_lat:-}" ]; then echo "HUBBLE_LATITUDE=${IGconf_hubble_lat}" >> "$ENV_FILE"; fi
+      if [ -n "${IGconf_hubble_lon:-}" ]; then echo "HUBBLE_LONGITUDE=${IGconf_hubble_lon}" >> "$ENV_FILE"; fi
+      echo "HUBBLE_GPS_ENABLED=${IGconf_hubble_gps:-false}" >> "$ENV_FILE"
+      echo "HUBBLE_GPS_PORT=${IGconf_hubble_gps_port:-/dev/ttyAMA0}" >> "$ENV_FILE"
+      echo "HUBBLE_GPS_BAUD_RATE=${IGconf_hubble_gps_baud:-9600}" >> "$ENV_FILE"
+      echo "HUBBLE_GPS_MODULE=${IGconf_hubble_gps_module:-nmea}" >> "$ENV_FILE"
+      if [ -n "${IGconf_hubble_adapter:-}" ]; then echo "HUBBLE_BLE_ADAPTER=${IGconf_hubble_adapter}" >> "$ENV_FILE"; fi
+      chmod 600 "$ENV_FILE"
+
+    # NOTE: the systemd units and the provisioner script are delivered by this
+    # layer's rootfs-overlay, which rpi-image-gen rsyncs into the rootfs during
+    # the customize phase *after* these inline hooks run. Enabling the units is
+    # therefore done in bdebstrap/customize90-hubble (a discrete phase script
+    # that runs after overlays are applied), not here.

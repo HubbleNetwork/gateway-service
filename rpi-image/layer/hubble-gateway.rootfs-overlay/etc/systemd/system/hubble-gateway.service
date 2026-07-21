@@ -1,0 +1,22 @@
+[Unit]
+Description=Hubble Network BLE Gateway
+Documentation=https://github.com/HubbleNetwork/gateway-service
+# Wait for the first-boot provisioner so the SDK key / location / wifi are in
+# place before we try to start, and for the network + bluetooth stacks.
+After=network-online.target bluetooth.target hubble-provision.service
+Wants=network-online.target
+Requires=hubble-provision.service
+
+[Service]
+Type=simple
+# The provisioner (hubble-provision) writes/refreshes this file on every boot.
+EnvironmentFile=-/opt/hubble-gateway/.env
+ExecStart=/opt/hubble-gateway/hubble-gateway
+Restart=always
+# If the SDK key or location is not yet provisioned the daemon exits non-zero.
+# Restart on a slow cadence so the unit self-heals once the operator drops a
+# config file onto the boot partition, without spamming the journal.
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

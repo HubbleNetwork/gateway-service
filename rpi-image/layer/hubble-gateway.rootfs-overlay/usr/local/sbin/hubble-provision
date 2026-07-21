@@ -1,0 +1,183 @@
+#!/bin/sh
+# Hubble Gateway boot-time provisioner.
+#
+# Reads an operator-supplied config file from the FAT boot partition
+# (edited on any computer after flashing) and turns it into the runtime
+# environment file consumed by hubble-gateway.service. Optionally also brings
+# up wifi as a fallback to Raspberry Pi Imager's native wifi customization.
+#
+# Boot-partition file (default: /boot/firmware/hubble-gateway.conf):
+#
+#   SDK_KEY=hsk_xxxxxxxxxxxxxxxx      # required
+#   LAT=37.7749                       # fixed latitude  (or use GPS=true)
+#   LON=-122.4194                     # fixed longitude
+#   GPS=false                         # true to use a GPS module instead of LAT/LON
+#   GPS_PORT=/dev/ttyAMA0
+#   GPS_BAUD=9600
+#   GPS_MODULE=nmea                   # nmea | zed_f9p
+#   ADAPTER=                          # e.g. hci1 for a USB BLE dongle
+#   API_URL=                          # override gateway API base URL
+#   WIFI_SSID=                        # optional wifi fallback (Imager wifi preferred)
+#   WIFI_PSK=
+#   WIFI_COUNTRY=US
+#
+# HUBBLE_*-prefixed keys are also accepted (e.g. HUBBLE_SDK_KEY=...).
+
+set -eu
+
+INSTALL_DIR="/opt/hubble-gateway"
+ENV_FILE="${INSTALL_DIR}/.env"
+
+log() { echo "hubble-provision: $*"; }
+
+# --- Locate the boot-partition config -------------------------------------
+
+BOOT_DIR=""
+for d in /boot/firmware /boot; do
+    if [ -d "$d" ]; then
+        BOOT_DIR="$d"
+        break
+    fi
+done
+
+CONF=""
+if [ -n "$BOOT_DIR" ]; then
+    for name in hubble-gateway.conf hubble-gateway.txt; do
+        if [ -f "${BOOT_DIR}/${name}" ]; then
+            CONF="${BOOT_DIR}/${name}"
+            break
+        fi
+    done
+fi
+
+# --- Load existing baked-in values so operator config only overrides -------
+
+SDK_KEY=""; API_URL=""; LAT=""; LON=""
+GPS="false"; GPS_PORT=""; GPS_BAUD=""; GPS_MODULE=""; ADAPTER=""
+WIFI_SSID=""; WIFI_PSK=""; WIFI_COUNTRY=""
+
+load_env_defaults() {
+    [ -f "$ENV_FILE" ] || return 0
+    # Seed from any values baked into the image at build time.
+    while IFS='=' read -r k v; do
+        case "$k" in
+            HUBBLE_SDK_KEY)      SDK_KEY="$v" ;;
+            HUBBLE_API_BASE_URL) API_URL="$v" ;;
+            HUBBLE_LATITUDE)     LAT="$v" ;;
+            HUBBLE_LONGITUDE)    LON="$v" ;;
+            HUBBLE_GPS_ENABLED)  GPS="$v" ;;
+            HUBBLE_GPS_PORT)     GPS_PORT="$v" ;;
+            HUBBLE_GPS_BAUD_RATE) GPS_BAUD="$v" ;;
+            HUBBLE_GPS_MODULE)   GPS_MODULE="$v" ;;
+            HUBBLE_BLE_ADAPTER)  ADAPTER="$v" ;;
+        esac
+    done < "$ENV_FILE"
+}
+
+# Strip surrounding whitespace and matching single/double quotes from a value.
+trim() {
+    v="$1"
+    v="${v#"${v%%[![:space:]]*}"}"   # leading ws
+    v="${v%"${v##*[![:space:]]}"}"   # trailing ws
+    case "$v" in
+        \"*\") v="${v#\"}"; v="${v%\"}" ;;
+        \'*\') v="${v#\'}"; v="${v%\'}" ;;
+    esac
+    printf '%s' "$v"
+}
+
+parse_conf() {
+    [ -n "$CONF" ] || return 0
+    log "reading operator config from ${CONF}"
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+            ''|'#'*) continue ;;
+        esac
+        key="${line%%=*}"
+        val="${line#*=}"
+        [ "$key" = "$line" ] && continue   # no '=' on the line
+        key="$(trim "$key")"
+        val="$(trim "$val")"
+        case "$key" in
+            SDK_KEY|HUBBLE_SDK_KEY)          SDK_KEY="$val" ;;
+            API_URL|HUBBLE_API_BASE_URL)     API_URL="$val" ;;
+            LAT|LATITUDE|HUBBLE_LATITUDE)    LAT="$val" ;;
+            LON|LONGITUDE|HUBBLE_LONGITUDE)  LON="$val" ;;
+            GPS|GPS_ENABLED|HUBBLE_GPS_ENABLED) GPS="$val" ;;
+            GPS_PORT|HUBBLE_GPS_PORT)        GPS_PORT="$val" ;;
+            GPS_BAUD|GPS_BAUD_RATE|HUBBLE_GPS_BAUD_RATE) GPS_BAUD="$val" ;;
+            GPS_MODULE|HUBBLE_GPS_MODULE)    GPS_MODULE="$val" ;;
+            ADAPTER|HUBBLE_BLE_ADAPTER)      ADAPTER="$val" ;;
+            WIFI_SSID)                       WIFI_SSID="$val" ;;
+            WIFI_PSK|WIFI_PASSWORD)          WIFI_PSK="$val" ;;
+            WIFI_COUNTRY)                    WIFI_COUNTRY="$val" ;;
+            *) log "ignoring unknown key '${key}'" ;;
+        esac
+    done < "$CONF"
+}
+
+write_env() {
+    umask 077
+    mkdir -p "$INSTALL_DIR"
+    tmp="${ENV_FILE}.tmp"
+    : > "$tmp"
+    [ -n "$SDK_KEY" ]    && echo "HUBBLE_SDK_KEY=${SDK_KEY}"        >> "$tmp"
+    [ -n "$API_URL" ]    && echo "HUBBLE_API_BASE_URL=${API_URL}"  >> "$tmp"
+    [ -n "$LAT" ]        && echo "HUBBLE_LATITUDE=${LAT}"          >> "$tmp"
+    [ -n "$LON" ]        && echo "HUBBLE_LONGITUDE=${LON}"         >> "$tmp"
+    echo "HUBBLE_GPS_ENABLED=${GPS:-false}"                        >> "$tmp"
+    [ -n "$GPS_PORT" ]   && echo "HUBBLE_GPS_PORT=${GPS_PORT}"     >> "$tmp"
+    [ -n "$GPS_BAUD" ]   && echo "HUBBLE_GPS_BAUD_RATE=${GPS_BAUD}" >> "$tmp"
+    [ -n "$GPS_MODULE" ] && echo "HUBBLE_GPS_MODULE=${GPS_MODULE}" >> "$tmp"
+    [ -n "$ADAPTER" ]    && echo "HUBBLE_BLE_ADAPTER=${ADAPTER}"   >> "$tmp"
+    mv "$tmp" "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+    log "wrote ${ENV_FILE}"
+}
+
+# --- Optional wifi fallback (Imager's native wifi is preferred) ------------
+
+configure_wifi() {
+    [ -n "$WIFI_SSID" ] || return 0
+    command -v nmcli >/dev/null 2>&1 || { log "nmcli not available, skipping wifi"; return 0; }
+
+    if [ -n "$WIFI_COUNTRY" ] && command -v iw >/dev/null 2>&1; then
+        iw reg set "$WIFI_COUNTRY" 2>/dev/null || true
+    fi
+
+    if nmcli -t -f NAME connection show 2>/dev/null | grep -qx "$WIFI_SSID"; then
+        log "wifi connection '${WIFI_SSID}' already present"
+        return 0
+    fi
+
+    log "creating wifi connection for SSID '${WIFI_SSID}'"
+    if [ -n "$WIFI_PSK" ]; then
+        nmcli connection add type wifi con-name "$WIFI_SSID" ifname wlan0 \
+            ssid "$WIFI_SSID" \
+            wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$WIFI_PSK" \
+            connection.autoconnect yes >/dev/null 2>&1 || log "wifi setup failed"
+    else
+        nmcli connection add type wifi con-name "$WIFI_SSID" ifname wlan0 \
+            ssid "$WIFI_SSID" connection.autoconnect yes >/dev/null 2>&1 || log "wifi setup failed"
+    fi
+}
+
+# --- Run --------------------------------------------------------------------
+
+load_env_defaults
+parse_conf
+write_env
+configure_wifi
+
+if [ -z "$SDK_KEY" ]; then
+    log "WARNING: no SDK key set. Add SDK_KEY=... to ${BOOT_DIR:-/boot/firmware}/hubble-gateway.conf and reboot."
+fi
+
+# Avoid leaving the SDK key in plaintext on the FAT partition and avoid
+# reprocessing on subsequent boots. Keep a copy the operator can re-enable.
+if [ -n "$CONF" ]; then
+    mv "$CONF" "${CONF}.applied" 2>/dev/null || true
+    log "consumed ${CONF} -> ${CONF}.applied"
+fi
+
+exit 0

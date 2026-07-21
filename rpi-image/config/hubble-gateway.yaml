@@ -1,0 +1,47 @@
+# Hubble Gateway — Raspberry Pi image build configuration.
+#
+# Build with:
+#   ./rpi-image-gen build -S <path-to>/gateway-service/rpi-image -c hubble-gateway.yaml
+#
+# The `-S` source dir makes the custom `hubble-gateway` layer (and its
+# rootfs-overlay) discoverable.
+
+device:
+  # Target model: rpi5 | rpi4 | rpi3 | zero2w | cm4 | cm5
+  layer: rpi5
+  hostname: hubble-gateway
+  # A local login account. Raspberry Pi Imager's customization can override the
+  # username/password and SSH keys at flash time. CHANGE THIS default password
+  # or rely on Imager to set credentials.
+  user1: hubble
+  user1pass: hubblegateway
+
+image:
+  layer: image-rpios
+  boot_part_size: 200%
+  root_part_size: 300%
+  name: hubble-gateway
+
+layer:
+  base: hubble-gateway
+
+# Wireless regulatory domain baked into the image. Imager will also set a
+# country when you configure wifi there.
+ieee80211:
+  regdom: US
+
+# BlueZ adapter friendly name.
+bluez:
+  name: hubble-gateway
+
+# Hubble daemon options. Leave sdk_key empty to require flash-time provisioning
+# via the boot-partition hubble-gateway.conf. Set lat/lon (or gps) so the daemon
+# has a location; without one it refuses to start.
+hubble:
+  sdk_key: ""
+  gps: false
+  # lat: "37.7749"
+  # lon: "-122.4194"
+  version: latest
+  install_method: binary
+  repo: HubbleNetwork/gateway-service
