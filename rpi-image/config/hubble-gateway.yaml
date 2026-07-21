@@ -14,7 +14,9 @@ device:
   # username/password and SSH keys at flash time. CHANGE THIS default password
   # or rely on Imager to set credentials.
   user1: hubble
-  user1pass: hubblegateway
+  # Must satisfy rpi-image-gen's password policy (upper/lower/digit/symbol, 8+).
+  # Change this or override it in Raspberry Pi Imager at flash time.
+  user1pass: HubbleGw1!
 
 image:
   layer: image-rpios
@@ -39,7 +41,9 @@ bluez:
 # has a location; without one it refuses to start.
 hubble:
   sdk_key: ""
-  gps: false
+  # Quoted so YAML doesn't coerce it to Python False; the layer expects
+  # the literal string true/false.
+  gps: "false"
   # lat: "37.7749"
   # lon: "-122.4194"
   version: latest
