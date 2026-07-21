@@ -88,12 +88,20 @@ jobs:
 
       - name: Generate build config for ${{ matrix.device }}
         run: |
+          # Map our friendly model labels (used for asset names) to the actual
+          # rpi-image-gen device layer names.
+          case "${{ matrix.device }}" in
+            zero2w) DEV_LAYER=rpizero2w ;;
+            cm4)    DEV_LAYER=rpi-cm4 ;;
+            cm5)    DEV_LAYER=rpi-cm5 ;;
+            *)      DEV_LAYER="${{ matrix.device }}" ;;
+          esac
           cat > gateway-service/rpi-image/config/ci.yaml <<EOF
           include:
             file: hubble-gateway.yaml
 
           device:
-            layer: ${{ matrix.device }}
+            layer: ${DEV_LAYER}
 
           image:
             name: hubble-gateway-${{ matrix.device }}

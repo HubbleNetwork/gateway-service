@@ -7,7 +7,8 @@
 # rootfs-overlay) discoverable.
 
 device:
-  # Target model: rpi5 | rpi4 | rpi3 | zero2w | cm4 | cm5
+  # Target model (rpi-image-gen device layer name):
+  # rpi5 | rpi4 | rpi3 | rpizero2w | rpi-cm4 | rpi-cm5
   layer: rpi5
   hostname: hubble-gateway
   # A local login account. Raspberry Pi Imager's customization can override the
