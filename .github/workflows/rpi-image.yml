@@ -67,6 +67,15 @@ jobs:
       INSTALL_METHOD: ${{ github.event.inputs.install_method || 'binary' }}
       RIG_REF: ${{ github.event.inputs.rpi_image_gen_ref || 'master' }}
     steps:
+      - name: Resolve gateway version
+        run: |
+          # On image-v* tag builds, pin the gateway daemon to the matching
+          # gateway release (image-v0.1.1 -> v0.1.1) instead of "latest", which
+          # is fragile once image releases become the newest release.
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "GATEWAY_VERSION=${GITHUB_REF_NAME#image-}" >> "$GITHUB_ENV"
+          fi
+
       - name: Checkout gateway-service
         uses: actions/checkout@v4
         with:
