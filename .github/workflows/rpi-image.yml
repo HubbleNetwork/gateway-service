@@ -162,5 +162,12 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          # Upload only this device's files. The matrix jobs run in parallel and
+          # share one release, so uploading the identically-named build metadata
+          # (image.json, SBOM, etc.) from every job races and fails. Those stay
+          # available as the workflow artifact.
+          files: |
+            dist/hubble-gateway-${{ matrix.device }}.img.xz
+            dist/hubble-gateway-${{ matrix.device }}.sha256
+            dist/hubble-gateway-${{ matrix.device }}.version.txt
           generate_release_notes: true
