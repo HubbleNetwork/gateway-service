@@ -127,21 +127,26 @@ jobs:
             find "$OUT" -maxdepth 3 -type f | sort >&2
             exit 1
           fi
-          BASENAME="hubble-gateway-${{ matrix.device }}-${GATEWAY_VERSION}"
-          cp "$IMG" "dist/${BASENAME}.img"
-          echo "Compressing $(du -h "dist/${BASENAME}.img" | cut -f1) image..."
-          xz -T0 -9 "dist/${BASENAME}.img"
+          # Stable, version-independent asset name so the
+          # releases/latest/download/... direct links are permanent. The baked
+          # gateway version is recorded in the release notes and the .sha256.
+          IMGNAME="hubble-gateway-${{ matrix.device }}"
+          LABEL="hubble-gateway-${{ matrix.device }}-${GATEWAY_VERSION}"
+          cp "$IMG" "dist/${IMGNAME}.img"
+          echo "Compressing $(du -h "dist/${IMGNAME}.img" | cut -f1) image..."
+          xz -T0 -9 "dist/${IMGNAME}.img"
+          echo "built from gateway version: ${GATEWAY_VERSION}" > "dist/${IMGNAME}.version.txt"
           # Include the image-description JSON / SBOM if the build produced them.
           find "$OUT" -type f \( -name '*.json' -o -name '*sbom*' \) \
             -exec cp {} "dist/" \; 2>/dev/null || true
-          ( cd dist && sha256sum * > "${BASENAME}.sha256" )
-          echo "basename=${BASENAME}" >> "$GITHUB_OUTPUT"
+          ( cd dist && sha256sum * > "${IMGNAME}.sha256" )
+          echo "label=${LABEL}" >> "$GITHUB_OUTPUT"
           ls -l dist
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.pkg.outputs.basename }}
+          name: ${{ steps.pkg.outputs.label }}
           path: dist/*
           retention-days: 14
 
