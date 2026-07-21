@@ -11,9 +11,6 @@
 #  provides the imager_custom helpers that Imager's firstrun.sh calls so that
 #  Imager's native wifi / ssh / hostname customization works on this image.
 #
-# Base building blocks mirror the bookworm-minbase suite, but swap the default
-# systemd-networkd stack for NetworkManager (so a single network-activator
-# provider exists) and add BlueZ + wireless regulatory + CA certificates.
 # X-Env-Layer-Requires: debian-bookworm-arm64-multi,
 #  rpi-debian-bookworm,
 #  rpi-misc-utils,
