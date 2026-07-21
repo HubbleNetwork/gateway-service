@@ -51,7 +51,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "devices=[\"${{ github.event.inputs.device }}\"]" >> "$GITHUB_OUTPUT"
           else
-            echo 'devices=["rpi5","rpi4"]' >> "$GITHUB_OUTPUT"
+            echo 'devices=["rpi5","rpi4","rpi3","zero2w","cm4","cm5"]' >> "$GITHUB_OUTPUT"
           fi
 
   build:
