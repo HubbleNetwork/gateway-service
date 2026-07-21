@@ -70,7 +70,7 @@
 # X-Env-Var-gps_baud: 9600
 # X-Env-Var-gps_baud-Desc: GPS baud rate.
 # X-Env-Var-gps_baud-Required: n
-# X-Env-Var-gps_baud-Valid: uint
+# X-Env-Var-gps_baud-Valid: int
 # X-Env-Var-gps_baud-Set: y
 #
 # X-Env-Var-gps_module: nmea
