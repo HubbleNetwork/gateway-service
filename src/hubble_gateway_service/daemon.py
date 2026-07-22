@@ -1,6 +1,7 @@
 """Gateway daemon: orchestrates SDK components into a running service."""
 
 import asyncio
+import logging
 import signal
 import sys
 
@@ -33,7 +34,7 @@ def _configure_logging(settings: Settings) -> None:
     structlog.configure(
         processors=processors,
         wrapper_class=structlog.make_filtering_bound_logger(
-            getattr(structlog, settings.log_level.upper(), structlog.INFO)  # type: ignore[arg-type]
+            getattr(logging, settings.log_level.upper(), logging.INFO)
         ),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(),
@@ -65,6 +66,18 @@ async def run() -> None:
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, handle_signal, sig)
+
+    has_location = (
+        settings.gps_enabled
+        or (settings.latitude is not None and settings.longitude is not None)
+    )
+    if not has_location:
+        logger.error(
+            "No location configured. Packets without a valid location will be rejected. "
+            "Provide --lat/--lon for a fixed position, or --gps to enable GPS.",
+            hint="Example: hubble-gateway --sdk-key <key> --lat 37.7614 --lon -122.4399",
+        )
+        sys.exit(1)
 
     location_provider = await create_location_provider(
         gps_enabled=settings.gps_enabled,
