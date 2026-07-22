@@ -79,9 +79,9 @@
 # X-Env-Var-gps_module-Valid: keywords:nmea,zed_f9p
 # X-Env-Var-gps_module-Set: y
 #
-# X-Env-Var-adapter:
-# X-Env-Var-adapter-Desc: BLE adapter override, e.g. hci1 for a USB dongle.
-#  Empty auto-selects.
+# X-Env-Var-adapter: hci0
+# X-Env-Var-adapter-Desc: BLE adapter to use. hci0 is the USB dongle on a Pi
+#  with an external adapter. Empty auto-selects.
 # X-Env-Var-adapter-Required: n
 # X-Env-Var-adapter-Valid: string-or-empty
 # X-Env-Var-adapter-Set: y

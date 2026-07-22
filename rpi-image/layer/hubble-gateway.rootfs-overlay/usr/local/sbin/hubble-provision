@@ -15,7 +15,7 @@
 #   GPS_PORT=/dev/ttyAMA0
 #   GPS_BAUD=9600
 #   GPS_MODULE=nmea                   # nmea | zed_f9p
-#   ADAPTER=                          # e.g. hci1 for a USB BLE dongle
+#   ADAPTER=hci0                      # BLE adapter (hci0 = USB dongle default)
 #   API_URL=                          # override gateway API base URL
 #   WIFI_SSID=                        # optional wifi fallback (Imager wifi preferred)
 #   WIFI_PSK=
@@ -74,6 +74,19 @@ load_env_defaults() {
     done < "$ENV_FILE"
 }
 
+# Strip an inline comment (whitespace followed by '#' through end of line).
+# A fully quoted value is left untouched so a '#' inside quotes (e.g. a wifi
+# passphrase) is preserved.
+strip_comment() {
+    v="$1"
+    case "$v" in
+        \"*\"|\'*\') printf '%s' "$v"; return ;;
+        *' #'*)  v="${v%% #*}" ;;
+        *"$(printf '\t')#"*) v="${v%%"$(printf '\t')#"*}" ;;
+    esac
+    printf '%s' "$v"
+}
+
 # Strip surrounding whitespace and matching single/double quotes from a value.
 trim() {
     v="$1"
@@ -97,6 +110,7 @@ parse_conf() {
         val="${line#*=}"
         [ "$key" = "$line" ] && continue   # no '=' on the line
         key="$(trim "$key")"
+        val="$(strip_comment "$val")"
         val="$(trim "$val")"
         case "$key" in
             SDK_KEY|HUBBLE_SDK_KEY)          SDK_KEY="$val" ;;
@@ -162,11 +176,33 @@ configure_wifi() {
     fi
 }
 
+# --- Bluetooth ------------------------------------------------------------
+
+# Fresh images boot with the Bluetooth radio rfkill soft-blocked, which makes
+# BlueZ scanning fail with "Resource Not Ready". Clear the soft block (via
+# sysfs, so no rfkill package is required) and power the adapters up.
+unblock_bluetooth() {
+    for d in /sys/class/rfkill/*; do
+        [ -r "$d/type" ] || continue
+        if [ "$(cat "$d/type" 2>/dev/null)" = "bluetooth" ]; then
+            echo 0 > "$d/soft" 2>/dev/null \
+                && log "unblocked $(cat "$d/name" 2>/dev/null)"
+        fi
+    done
+    if command -v hciconfig >/dev/null 2>&1; then
+        for h in /sys/class/bluetooth/hci*; do
+            [ -e "$h" ] || continue
+            hciconfig "$(basename "$h")" up 2>/dev/null || true
+        done
+    fi
+}
+
 # --- Run --------------------------------------------------------------------
 
 load_env_defaults
 parse_conf
 write_env
+unblock_bluetooth
 configure_wifi
 
 if [ -z "$SDK_KEY" ]; then

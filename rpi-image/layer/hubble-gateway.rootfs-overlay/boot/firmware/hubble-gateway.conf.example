@@ -24,7 +24,7 @@ LON=-122.4194
 #GPS_MODULE=nmea        # nmea | zed_f9p
 
 # --- Optional ---------------------------------------------------------------
-#ADAPTER=hci1           # USB BLE dongle
+#ADAPTER=hci0           # BLE adapter (hci0 = USB dongle, the default)
 #API_URL=https://gw-api.hubble.com
 
 # --- Wifi fallback (only if you did not use Imager's wifi customization) ----

@@ -42,6 +42,9 @@ bluez:
 # has a location; without one it refuses to start.
 hubble:
   sdk_key: ""
+  # Default BLE adapter. hci0 is the USB dongle on a Pi with an external
+  # adapter; override via hubble-gateway.conf (ADAPTER=) if needed.
+  adapter: hci0
   # Quoted so YAML doesn't coerce it to Python False; the layer expects
   # the literal string true/false.
   gps: "false"
