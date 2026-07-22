@@ -180,3 +180,7 @@ jobs:
             dist/hubble-gateway-${{ matrix.device }}.sha256
             dist/hubble-gateway-${{ matrix.device }}.version.txt
           generate_release_notes: true
+          # Image releases own the "latest" pointer so the README's
+          # releases/latest/download/... image links always resolve. Without
+          # this, a semver binary release (v*) wins GitHub's "latest".
+          make_latest: true
