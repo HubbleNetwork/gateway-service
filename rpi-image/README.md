@@ -87,10 +87,17 @@ These fields map to Imager's `firstrun.sh`, which this image honors via the
 
 ## 4. Edit `hubble-gateway.conf` (SDK key + location)
 
-After flashing, re-plug the card/USB. A small **`bootfs`** (FAT) partition
-mounts on your computer containing **`hubble-gateway.conf.example`**.
+After flashing, **remove the card/USB and re-insert it** — the small
+**`bootfs`** (FAT) partition then mounts on your computer containing
+**`hubble-gateway.conf.example`**.
 
-1. Copy/rename it to **`hubble-gateway.conf`** on that same partition.
+1. Copy the example to the real filename and open it for editing:
+
+   ```bash
+   cp /Volumes/bootfs/hubble-gateway.conf.example /Volumes/bootfs/hubble-gateway.conf
+   nano /Volumes/bootfs/hubble-gateway.conf   # Linux: /media/<you>/bootfs/...
+   ```
+
 2. Set at least the SDK key and a location:
 
    ```ini
