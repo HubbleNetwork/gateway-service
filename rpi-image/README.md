@@ -158,8 +158,9 @@ Images are normally built by GitHub Actions
 
 - **Manually**: **Actions → Raspberry Pi Image → Run workflow**, choosing the
   device model, `hubble-gateway` version, and install method.
-- **On a tag** `image-v*`: builds the default models (`rpi5`, `rpi4`) and
-  attaches the compressed images to a GitHub Release.
+- **On a tag** `image-v*`: builds all models (`rpi5`, `rpi4`, `rpi3`,
+  `zero2w`, `cm4`, `cm5`) and attaches the compressed images to a GitHub
+  Release, which becomes the `latest` release the README links point at.
 
 The workflow writes a small `ci.yaml` that `include:`s `hubble-gateway.yaml` and
 overrides `device.layer` / `hubble.version` / `hubble.install_method` per run.
