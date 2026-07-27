@@ -30,8 +30,16 @@ Flash an SD card with the gateway image; it runs automatically on boot.
 
 3. **Flash it** with Imager and set **Wi‑Fi** in OS Customization (or skip it to
    use ethernet).
-4. **Set your SDK key + location.** On the boot partition (`bootfs`), copy
-   `hubble-gateway.conf.example` to `hubble-gateway.conf` and edit:
+4. **Set your SDK key + location.** After flashing, **remove the card and
+   re-insert it** so the `bootfs` (BOOT) volume mounts on your computer. Copy
+   the example config to the real filename and edit it:
+
+   ```bash
+   cp /Volumes/bootfs/hubble-gateway.conf.example /Volumes/bootfs/hubble-gateway.conf
+   nano /Volumes/bootfs/hubble-gateway.conf   # Linux: /media/<you>/bootfs/...
+   ```
+
+   Set at least your SDK key and a location:
 
    ```ini
    SDK_KEY=hsk_your_key_here
