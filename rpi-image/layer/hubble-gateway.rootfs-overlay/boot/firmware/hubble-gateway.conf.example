@@ -24,7 +24,8 @@ LON=-122.4194
 #GPS_MODULE=nmea        # nmea | zed_f9p
 
 # --- Optional ---------------------------------------------------------------
-#ADAPTER=hci0           # BLE adapter (hci0 = USB dongle, the default)
+#ADAPTER=hci1           # BLE adapter. The Pi's onboard radio is hci0; an
+#                       # external USB dongle is usually hci1.
 #API_URL=https://gw-api.hubble.com
 
 # --- Wifi fallback (only if you did not use Imager's wifi customization) ----

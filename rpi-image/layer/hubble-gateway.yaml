@@ -80,8 +80,10 @@
 # X-Env-Var-gps_module-Set: y
 #
 # X-Env-Var-adapter: hci0
-# X-Env-Var-adapter-Desc: BLE adapter to use. hci0 is the USB dongle on a Pi
-#  with an external adapter. Empty auto-selects.
+# X-Env-Var-adapter-Desc: BLE adapter to use. On a Pi with an onboard radio
+#  that radio claims hci0 and an external USB dongle enumerates after it, so
+#  the dongle is usually hci1. Override via the boot-partition
+#  hubble-gateway.conf (ADAPTER=) when using a dongle. Empty auto-selects.
 # X-Env-Var-adapter-Required: n
 # X-Env-Var-adapter-Valid: string-or-empty
 # X-Env-Var-adapter-Set: y
@@ -113,6 +115,16 @@ mmdebstrap:
     - raspberrypi-sys-mods
     - curl
     - iw
+    # Bluetooth/wifi firmware blobs for common USB adapters. The kernel drivers
+    # are in-tree, but they load their firmware from userspace at probe time,
+    # so without these an external dongle enumerates as a DOWN hci device with
+    # an all-zero BD address and BlueZ never exposes it on D-Bus (the daemon
+    # then reports "adapter 'hciN' not found"). Raspberry Pi OS ships these by
+    # default; this image is a minimal Debian build and must ask for them.
+    # firmware-realtek covers the RTL8761B/BU dongles we ship with.
+    - firmware-realtek
+    - firmware-atheros
+    - firmware-misc-nonfree
   customize-hooks:
     # --- Install the hubble-gateway daemon ---------------------------------
     - |-
