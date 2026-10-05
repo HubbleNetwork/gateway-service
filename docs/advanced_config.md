@@ -94,17 +94,25 @@ uv pip install hubble-gateway-service
 
 ### Download the binary directly
 
-Pre-built single-file binaries for each release — no Python needed:
+Pre-built single-file binaries for each release — no Python needed. They're
+attached to the `v*` releases, not the `image-v*` releases. GitHub's "latest"
+release is always an image release, so `releases/latest/download/...` links
+don't work for these binaries. Look up the newest `v*` tag first:
 
 ```bash
+VERSION=$(curl -fsSL https://api.github.com/repos/HubbleNetwork/gateway-service/releases \
+  | grep -o '"tag_name": *"v[^"]*"' | head -1 | cut -d'"' -f4)
+
 # Raspberry Pi (aarch64)
-curl -fsSL https://github.com/HubbleNetwork/gateway-service/releases/latest/download/hubble-gateway-aarch64-linux \
+curl -fsSL "https://github.com/HubbleNetwork/gateway-service/releases/download/${VERSION}/hubble-gateway-aarch64-linux" \
   -o /usr/local/bin/hubble-gateway && chmod +x /usr/local/bin/hubble-gateway
 
 # x86_64 Linux
-curl -fsSL https://github.com/HubbleNetwork/gateway-service/releases/latest/download/hubble-gateway-x86_64-linux \
+curl -fsSL "https://github.com/HubbleNetwork/gateway-service/releases/download/${VERSION}/hubble-gateway-x86_64-linux" \
   -o /usr/local/bin/hubble-gateway && chmod +x /usr/local/bin/hubble-gateway
 ```
+
+Or pin a specific version, e.g. `VERSION=v0.1.2`.
 
 ### systemd service
 

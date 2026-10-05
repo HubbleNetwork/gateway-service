@@ -108,9 +108,13 @@ INSTALLED_VIA=""
 EXEC_PATH=""
 
 if ! $FORCE_PIP && [[ -n "${BINARY_NAME}" ]]; then
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/${BINARY_NAME}"
-    info "Downloading ${BINARY_NAME}..."
-    if curl -fsSL "${DOWNLOAD_URL}" -o "${BIN_PATH}" 2>/dev/null; then
+    # GitHub's "latest" release is always an image-v* release, which carries no
+    # binaries, so releases/latest/download/... 404s. Resolve the newest v* tag.
+    BINARY_TAG=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases" 2>/dev/null \
+        | grep -o '"tag_name": *"v[^"]*"' | head -1 | cut -d'"' -f4 || true)
+    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${BINARY_TAG}/${BINARY_NAME}"
+    info "Downloading ${BINARY_NAME} ${BINARY_TAG}..."
+    if [[ -n "${BINARY_TAG}" ]] && curl -fsSL "${DOWNLOAD_URL}" -o "${BIN_PATH}" 2>/dev/null; then
         chmod +x "${BIN_PATH}"
         INSTALLED_VIA="binary"
         EXEC_PATH="${BIN_PATH}"
