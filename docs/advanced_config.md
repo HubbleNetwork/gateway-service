@@ -133,6 +133,7 @@ ExecStart=/opt/hubble-gateway/venv/bin/hubble-gateway
 Restart=always
 RestartSec=10
 WatchdogSec=300
+NotifyAccess=all
 
 [Install]
 WantedBy=multi-user.target
@@ -148,6 +149,7 @@ sudo systemctl enable --now hubble-gateway
 hubble-gateway-service (this repo)
   ├─ daemon.py            orchestration, signal handling, stats loop
   ├─ cli.py               argument parsing, env wiring
+  ├─ systemd.py           sd_notify watchdog pings (WatchdogSec=300)
   ├─ install.sh           one-line installer (binary or pip)
   └─ release.yml          GitHub Actions → PyApp single-binary builds
 
