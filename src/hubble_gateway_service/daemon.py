@@ -5,9 +5,8 @@ import logging
 import signal
 import sys
 
-import structlog
-
 import hubble_gateway
+import structlog
 from hubble_gateway import (
     BLEPacket,
     GatewayAuth,
@@ -16,6 +15,8 @@ from hubble_gateway import (
     Settings,
     create_location_provider,
 )
+
+from hubble_gateway_service import systemd
 
 logger = structlog.get_logger(__name__)
 
@@ -66,6 +67,15 @@ async def run() -> None:
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, handle_signal, sig)
+
+    # Started before the slow startup steps (GPS, registration) because
+    # systemd's watchdog timer runs from process start under Type=simple.
+    scanner_task: asyncio.Task | None = None
+    watchdog_task = asyncio.create_task(
+        systemd.watchdog_loop(
+            lambda: scanner_task is None or not scanner_task.done(), shutdown_event
+        )
+    )
 
     has_location = (
         settings.gps_enabled
@@ -146,6 +156,7 @@ async def run() -> None:
         pass
     heartbeat_task.cancel()
     stats_task.cancel()
+    watchdog_task.cancel()
 
     await sender.stop()
     await auth.stop()

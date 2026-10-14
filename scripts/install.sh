@@ -168,6 +168,7 @@ ExecStart=${EXEC_PATH}
 Restart=always
 RestartSec=10
 WatchdogSec=300
+NotifyAccess=all
 
 [Install]
 WantedBy=multi-user.target
