@@ -11,7 +11,9 @@ import hubble_gateway
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="hubble-gateway",
-        description="Hubble Network BLE Gateway — scans for BLE devices and uploads to the Hubble cloud",
+        description=(
+            "Hubble Network BLE Gateway — scans for BLE devices and uploads to the Hubble cloud"
+        ),
     )
     parser.add_argument(
         "--version", action="version",
