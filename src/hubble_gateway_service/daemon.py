@@ -5,9 +5,8 @@ import logging
 import signal
 import sys
 
-import structlog
-
 import hubble_gateway
+import structlog
 from hubble_gateway import (
     BLEPacket,
     GatewayAuth,
