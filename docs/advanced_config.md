@@ -48,9 +48,9 @@ All settings can be provided via CLI flags, environment variables (prefixed
 | `HUBBLE_API_BASE_URL` | `--api-url` | `https://gw-api.hubble.com` | Gateway API URL |
 | `HUBBLE_BLE_ADAPTER` | `--adapter` | *(auto)* | BLE adapter (`hci0`, `hci1`) |
 | `HUBBLE_SCAN_DURATION_SECONDS` | — | `5.0` | Seconds per scan cycle |
-| `HUBBLE_BATCH_SIZE` | — | `500` | Max packets per upload batch |
-| `HUBBLE_UPLOAD_INTERVAL_SECONDS` | — | `5.0` | Seconds between uploads |
-| `HUBBLE_DEDUP_WINDOW_SECONDS` | — | `300.0` | Dedup window |
+| `HUBBLE_BATCH_SIZE` | — | `500` | Max packets per upload batch ¹ |
+| `HUBBLE_UPLOAD_INTERVAL_SECONDS` | — | `60.0` | Seconds between uploads ¹ |
+| `HUBBLE_DEDUP_WINDOW_SECONDS` | — | `300.0` | Dedup window ¹ |
 | `HUBBLE_LATITUDE` | `--lat` | — | Fixed latitude |
 | `HUBBLE_LONGITUDE` | `--lon` | — | Fixed longitude |
 | `HUBBLE_GPS_ENABLED` | `--gps` | `false` | Enable GPS |
@@ -59,6 +59,13 @@ All settings can be provided via CLI flags, environment variables (prefixed
 | `HUBBLE_GPS_MODULE` | `--gps-module` | `nmea` | `nmea` or `zed_f9p` |
 | `HUBBLE_LOG_LEVEL` | `--log-level` | `INFO` | Log level |
 | `HUBBLE_LOG_JSON` | `--log-text` | `true` | JSON logs |
+
+¹ Local fallback. When the Hubble cloud sends a server config for this gateway
+(`uploadBatchSize`, `uploadIntervalMs`, `dedupWindowMs`), the server value
+wins. The gateway applies a new server config at once, with no restart, on
+registration, heartbeat or token refresh. A cleared server config returns the
+gateway to these local values. The dedup window holds across uploads: a device
+seen again inside the window is not uploaded again.
 
 ## GPS support
 
