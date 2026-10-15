@@ -47,6 +47,7 @@ All settings can be provided via CLI flags, environment variables (prefixed
 | `HUBBLE_SDK_KEY` | `--sdk-key` | *(required)* | SDK key from Hubble dashboard |
 | `HUBBLE_API_BASE_URL` | `--api-url` | `https://gw-api.hubble.com` | Gateway API URL |
 | `HUBBLE_BLE_ADAPTER` | `--adapter` | *(auto)* | BLE adapter (`hci0`, `hci1`) |
+| `HUBBLE_SERVICE_UUIDS` | — | FCA6, FEED | BLE service UUIDs to scan for, as a JSON list of 128-bit UUIDs ² |
 | `HUBBLE_SCAN_DURATION_SECONDS` | — | `5.0` | Seconds per scan cycle |
 | `HUBBLE_BATCH_SIZE` | — | `500` | Max packets per upload batch ¹ |
 | `HUBBLE_UPLOAD_INTERVAL_SECONDS` | — | `60.0` | Seconds between uploads ¹ |
@@ -66,6 +67,9 @@ wins. The gateway applies a new server config at once, with no restart, on
 registration, heartbeat or token refresh. A cleared server config returns the
 gateway to these local values. The dedup window holds across uploads: a device
 seen again inside the window is not uploaded again.
+
+² A JSON list, e.g.
+`HUBBLE_SERVICE_UUIDS='["0000FCA6-0000-1000-8000-00805F9B34FB"]'`.
 
 ## GPS support
 
