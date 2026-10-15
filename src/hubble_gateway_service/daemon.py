@@ -119,6 +119,7 @@ async def run() -> None:
         scan_duration=settings.scan_duration_seconds,
         on_packet=on_packet,
         adapter=settings.ble_adapter or None,
+        auth=auth,
     )
 
     scanner_task = asyncio.create_task(scanner.start())

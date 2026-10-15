@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: System :: Networking",
 ]
 dependencies = [
-    "hubble-gateway-sdk-python[gps]>=0.1.0",
+    "hubble-gateway-sdk-python[gps] @ git+https://github.com/HubbleNetwork/gateway-sdk-python@27965a8096721336139ff22a4c013fb4504ddaf5",
     "structlog>=23.2.0",
 ]
 
@@ -36,6 +36,10 @@ Documentation = "https://github.com/HubbleNetwork/gateway-service#readme"
 Repository = "https://github.com/HubbleNetwork/gateway-service"
 SDK = "https://github.com/HubbleNetwork/gateway-sdk-python"
 Issues = "https://github.com/HubbleNetwork/gateway-service/issues"
+
+# Needed only while the SDK is pinned to a git commit. Remove with the pin.
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/hubble_gateway_service"]
