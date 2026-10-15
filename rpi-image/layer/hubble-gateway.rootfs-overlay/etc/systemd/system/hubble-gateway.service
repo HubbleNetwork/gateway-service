@@ -17,6 +17,11 @@ Restart=always
 # Restart on a slow cadence so the unit self-heals once the operator drops a
 # config file onto the boot partition, without spamming the journal.
 RestartSec=15
+# The daemon pings the watchdog (WATCHDOG=1) every 30 s while its event loop
+# and BLE scanner are alive; a hung daemon is restarted. NotifyAccess=all
+# because the PyApp launcher may not be the process that sends the pings.
+WatchdogSec=300
+NotifyAccess=all
 
 [Install]
 WantedBy=multi-user.target
