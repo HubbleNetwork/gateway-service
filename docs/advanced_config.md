@@ -71,9 +71,10 @@ seen again inside the window is not uploaded again.
 ² Local fallback, e.g.
 `HUBBLE_SERVICE_UUIDS='["0000FCA6-0000-1000-8000-00805F9B34FB"]'`. A server
 `scanServiceUuids` list (up to 16 UUIDs, FCA6 always first) replaces it and
-applies at the next scan cycle, with no restart. Sightings for every listed
-UUID are uploaded. A cleared server config returns to the local list. This
-needs an SDK that implements `scanServiceUuids` (gateway-sdk-python#1).
+applies at the next scan cycle, with no restart. The server list accepts only
+16-bit service UUIDs (`FEED`, or written out on the Bluetooth Base UUID);
+other entries are dropped. Sightings for every listed UUID are uploaded. A
+cleared server config returns to the local list.
 
 ## GPS support
 

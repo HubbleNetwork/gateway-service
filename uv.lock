@@ -190,7 +190,7 @@ wheels = [
 [[package]]
 name = "hubble-gateway-sdk-python"
 version = "0.1.0"
-source = { git = "https://github.com/HubbleNetwork/gateway-sdk-python?rev=d81fe95609a6042e8e79cf18f7c2e59ec95c37c0#d81fe95609a6042e8e79cf18f7c2e59ec95c37c0" }
+source = { git = "https://github.com/HubbleNetwork/gateway-sdk-python?rev=27965a8096721336139ff22a4c013fb4504ddaf5#27965a8096721336139ff22a4c013fb4504ddaf5" }
 dependencies = [
     { name = "bleak" },
     { name = "httpx" },
@@ -223,7 +223,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "hubble-gateway-sdk-python", extras = ["gps"], git = "https://github.com/HubbleNetwork/gateway-sdk-python?rev=d81fe95609a6042e8e79cf18f7c2e59ec95c37c0" },
+    { name = "hubble-gateway-sdk-python", extras = ["gps"], git = "https://github.com/HubbleNetwork/gateway-sdk-python?rev=27965a8096721336139ff22a4c013fb4504ddaf5" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },

@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: System :: Networking",
 ]
 dependencies = [
-    "hubble-gateway-sdk-python[gps] @ git+https://github.com/HubbleNetwork/gateway-sdk-python@d81fe95609a6042e8e79cf18f7c2e59ec95c37c0",
+    "hubble-gateway-sdk-python[gps] @ git+https://github.com/HubbleNetwork/gateway-sdk-python@27965a8096721336139ff22a4c013fb4504ddaf5",
     "structlog>=23.2.0",
 ]
 
