@@ -15,6 +15,8 @@ don't fit your setup.
   - [pip / uv](#pip--uv)
   - [Download the binary directly](#download-the-binary-directly)
   - [systemd service](#systemd-service)
+- [Read-only root filesystems](#read-only-root-filesystems)
+- [Installer options](#installer-options)
 - [Architecture](#architecture)
 - [Building a custom gateway](#building-a-custom-gateway)
 
@@ -60,6 +62,7 @@ All settings can be provided via CLI flags, environment variables (prefixed
 | `HUBBLE_GPS_MODULE` | `--gps-module` | `nmea` | `nmea` or `zed_f9p` |
 | `HUBBLE_LOG_LEVEL` | `--log-level` | `INFO` | Log level |
 | `HUBBLE_LOG_JSON` | `--log-text` | `true` | JSON logs |
+| `HUBBLE_AUTH_TOKEN_PATH` | — | `~/.hubble-gateway/auth.json` | Where the gateway saves its auth tokens after registering |
 
 ¹ Local fallback. When the Hubble cloud sends a server config for this gateway
 (`uploadBatchSize`, `uploadIntervalMs`, `dedupWindowMs`), the server value
@@ -111,27 +114,43 @@ release is always an image release, so `releases/latest/download/...` links
 don't work for these binaries. Look up the newest `v*` tag first:
 
 ```bash
+sudo mkdir -p /opt/hubble-gateway/tmp   # the systemd unit below uses tmp/ as TMPDIR
 VERSION=$(curl -fsSL https://api.github.com/repos/HubbleNetwork/gateway-service/releases \
   | grep -o '"tag_name": *"v[^"]*"' | head -1 | cut -d'"' -f4)
 
 # Raspberry Pi (aarch64)
-curl -fsSL "https://github.com/HubbleNetwork/gateway-service/releases/download/${VERSION}/hubble-gateway-aarch64-linux" \
-  -o /usr/local/bin/hubble-gateway && chmod +x /usr/local/bin/hubble-gateway
+sudo curl -fsSL "https://github.com/HubbleNetwork/gateway-service/releases/download/${VERSION}/hubble-gateway-aarch64-linux" \
+  -o /opt/hubble-gateway/hubble-gateway && sudo chmod +x /opt/hubble-gateway/hubble-gateway
 
 # x86_64 Linux
-curl -fsSL "https://github.com/HubbleNetwork/gateway-service/releases/download/${VERSION}/hubble-gateway-x86_64-linux" \
-  -o /usr/local/bin/hubble-gateway && chmod +x /usr/local/bin/hubble-gateway
+sudo curl -fsSL "https://github.com/HubbleNetwork/gateway-service/releases/download/${VERSION}/hubble-gateway-x86_64-linux" \
+  -o /opt/hubble-gateway/hubble-gateway && sudo chmod +x /opt/hubble-gateway/hubble-gateway
 ```
 
 Or pin a specific version, e.g. `VERSION=v0.1.2`.
 
+The binaries need glibc 2.34 or newer. On musl systems (Alpine, some embedded
+images), use pip instead.
+
+On first run the binary unpacks its Python runtime and installs its
+dependencies from PyPI (about 200 MB, and it needs internet access once). Later
+runs start immediately and work offline.
+
 ### systemd service
 
 The [one-line installer](../README.md#existing-raspberry-pi--linux--one-line-install)
-sets this up automatically. To do it by hand:
+sets this up automatically. To do it by hand, copy the unit that matches how you
+installed into `/etc/systemd/system/hubble-gateway.service`:
+
+| Install | Example unit |
+|---|---|
+| Binary in `/opt/hubble-gateway` | [`hubble-gateway.service`](../examples/systemd/hubble-gateway.service) |
+| pip, venv in `/opt/hubble-gateway/venv` | [`hubble-gateway-pip.service`](../examples/systemd/hubble-gateway-pip.service) |
+| Binary on a read-only root, in `/data/hubble-gateway` | [`hubble-gateway-readonly-root.service`](../examples/systemd/hubble-gateway-readonly-root.service) |
+
+The binary unit:
 
 ```ini
-# /etc/systemd/system/hubble-gateway.service
 [Unit]
 Description=Hubble Network BLE Gateway
 After=network-online.target bluetooth.target
@@ -139,8 +158,12 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+Environment=XDG_CACHE_HOME=/opt/hubble-gateway/cache
+Environment=XDG_DATA_HOME=/opt/hubble-gateway/share
+Environment=TMPDIR=/opt/hubble-gateway/tmp
+Environment=HUBBLE_AUTH_TOKEN_PATH=/opt/hubble-gateway/auth.json
 EnvironmentFile=/opt/hubble-gateway/.env
-ExecStart=/opt/hubble-gateway/venv/bin/hubble-gateway
+ExecStart=/opt/hubble-gateway/hubble-gateway
 Restart=always
 RestartSec=10
 WatchdogSec=300
@@ -150,9 +173,85 @@ NotifyAccess=all
 WantedBy=multi-user.target
 ```
 
+Put your settings in `/opt/hubble-gateway/.env` (one `HUBBLE_*=value` per line;
+see the [configuration reference](#configuration-reference)) and make it
+readable only by root, since it holds your SDK key:
+
 ```bash
+sudo chmod 600 /opt/hubble-gateway/.env
+sudo systemctl daemon-reload
 sudo systemctl enable --now hubble-gateway
+sudo journalctl -u hubble-gateway -f
 ```
+
+`EnvironmentFile=` must point at a file that exists. If it doesn't, systemd
+logs `Failed to load environment files: No such file or directory` and retries
+forever without starting the gateway.
+
+For another install directory, `sh scripts/install.sh --print-unit --install-dir <DIR>`
+prints the unit to use (add `--pip` for a pip install).
+
+## Read-only root filesystems
+
+Embedded images (Yocto, OTA A/B systems) often mount `/` read-only and keep a
+separate writable partition such as `/data`. The gateway writes files in four
+places, and by default all of them are under `$HOME`:
+
+| What | Default location | Moved with |
+|---|---|---|
+| Unpacked Python runtime (binary only) | `~/.local/share/pyapp` | `XDG_DATA_HOME` |
+| Download cache and lock files (binary only) | `~/.cache` | `XDG_CACHE_HOME` |
+| Temporary files during first-run unpacking | `/tmp` | `TMPDIR` |
+| Auth tokens saved after registering | `~/.hubble-gateway/auth.json` | `HUBBLE_AUTH_TOKEN_PATH` |
+
+The units above set all four to directories inside the install directory, so a
+gateway installed on a writable partition never writes anywhere else. The
+one-line installer detects a read-only `/opt` and installs to `/data`, `/persist`
+or `/var/lib` instead. It skips any location that is wiped on reboot, such as
+tmpfs or an overlay whose writable layer is on tmpfs. Choose a location
+yourself with `--install-dir`.
+
+The service also needs `/etc/systemd/system` to be writable. Many read-only
+images make `/etc` an overlay stored on the data partition, so this usually
+works.
+
+To run the gateway by hand on such a system, set the same variables. `sudo`
+drops environment variables by default, so pass them with `env`:
+
+```bash
+sudo env XDG_CACHE_HOME=/data/hubble-gateway/cache \
+         XDG_DATA_HOME=/data/hubble-gateway/share \
+         TMPDIR=/data/hubble-gateway/tmp \
+         HUBBLE_AUTH_TOKEN_PATH=/data/hubble-gateway/auth.json \
+         /data/hubble-gateway/hubble-gateway --sdk-key hsk_your_key_here --lat 37.7749 --lon -122.4194
+```
+
+`TMPDIR` must point at a directory that exists.
+
+## Installer options
+
+`scripts/install.sh` is POSIX `sh`, so it also runs on BusyBox systems
+without bash.
+
+| Option | Description |
+|---|---|
+| `--sdk-key KEY` | SDK key (required) |
+| `--lat LAT`, `--lon LON` | Fixed location |
+| `--gps`, `--gps-port`, `--gps-baud`, `--gps-module` | GPS settings, as in the [configuration reference](#configuration-reference) |
+| `--adapter ADAPTER` | BLE adapter (`hci0`, `hci1`) |
+| `--install-dir DIR` | Install location. Default: `/opt/hubble-gateway`, or the first persistent writable one of `/data`, `/persist`, `/var/lib` |
+| `--version TAG` | Binary release to install, e.g. `v0.1.2`. Default: newest |
+| `--pip` | Install with pip instead of the binary |
+| `--print-unit` | Print the systemd unit the installer would write, then exit |
+| `--uninstall` | Stop and remove the service and the install directory |
+
+The installer runs the binary once before creating the service, so a missing
+network connection or an incompatible system shows up as an install error
+rather than as a service restart loop. Install output goes to `install.log` in
+the install directory.
+
+An existing gateway's tokens in `/root/.hubble-gateway/auth.json` are copied to
+the new location, so re-installing doesn't register the gateway again.
 
 ## Architecture
 
@@ -161,7 +260,8 @@ hubble-gateway-service (this repo)
   ├─ daemon.py            orchestration, signal handling, stats loop
   ├─ cli.py               argument parsing, env wiring
   ├─ systemd.py           sd_notify watchdog pings (WatchdogSec=300)
-  ├─ install.sh           one-line installer (binary or pip)
+  ├─ install.sh           one-line installer (binary or pip; POSIX sh)
+  ├─ examples/systemd/    unit files, kept equal to install.sh --print-unit by tests
   └─ release.yml          GitHub Actions → PyApp single-binary builds
 
 hubble-gateway SDK (gateway-sdk-python)
@@ -174,8 +274,8 @@ hubble-gateway SDK (gateway-sdk-python)
 ```
 
 The service binary is built with [PyApp](https://github.com/ofek/pyapp) — a Rust
-wrapper that embeds a Python distribution. First run bootstraps the environment
-(~5s); subsequent runs start instantly.
+wrapper that embeds a Python distribution. First run unpacks Python and installs
+the dependencies from PyPI; subsequent runs start instantly.
 
 ## Building a custom gateway
 
