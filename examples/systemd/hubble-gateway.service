@@ -1,0 +1,20 @@
+[Unit]
+Description=Hubble Network BLE Gateway
+After=network-online.target bluetooth.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=XDG_CACHE_HOME=/opt/hubble-gateway/cache
+Environment=XDG_DATA_HOME=/opt/hubble-gateway/share
+Environment=TMPDIR=/opt/hubble-gateway/tmp
+Environment=HUBBLE_AUTH_TOKEN_PATH=/opt/hubble-gateway/auth.json
+EnvironmentFile=/opt/hubble-gateway/.env
+ExecStart=/opt/hubble-gateway/hubble-gateway
+Restart=always
+RestartSec=10
+WatchdogSec=300
+NotifyAccess=all
+
+[Install]
+WantedBy=multi-user.target
