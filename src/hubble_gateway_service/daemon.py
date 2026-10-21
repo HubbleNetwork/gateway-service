@@ -16,7 +16,7 @@ from hubble_gateway import (
     create_location_provider,
 )
 
-from hubble_gateway_service import systemd
+from hubble_gateway_service import __version__, systemd
 
 logger = structlog.get_logger(__name__)
 
@@ -49,7 +49,8 @@ async def run() -> None:
 
     logger.info(
         "Starting Hubble Gateway",
-        version=hubble_gateway.__version__,
+        version=__version__,
+        sdk_version=hubble_gateway.__version__,
         sdk_key=f"{settings.sdk_key[:8]}...",
         api_url=settings.api_base_url,
     )

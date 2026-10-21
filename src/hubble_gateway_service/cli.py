@@ -7,6 +7,8 @@ import sys
 
 import hubble_gateway
 
+from hubble_gateway_service import __version__
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -17,7 +19,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--version", action="version",
-        version=f"hubble-gateway-service {hubble_gateway.__version__}",
+        version=f"hubble-gateway-service {__version__} (SDK {hubble_gateway.__version__})",
     )
     parser.add_argument("--sdk-key", help="SDK key (or set HUBBLE_SDK_KEY env var)")
     parser.add_argument("--api-url", help="Gateway API base URL")
@@ -67,7 +69,7 @@ def main() -> None:
         )
         sys.exit(1)
 
-    print(f"Hubble Gateway Service (SDK v{hubble_gateway.__version__})")
+    print(f"Hubble Gateway Service v{__version__} (SDK v{hubble_gateway.__version__})")
     print(f"  SDK key: {sdk_key[:8]}...{sdk_key[-4:]}")
     print()
 
