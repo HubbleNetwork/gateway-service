@@ -18,7 +18,8 @@ def main() -> None:
         ),
     )
     parser.add_argument(
-        "--version", action="version",
+        "--version",
+        action="version",
         version=f"hubble-gateway-service {__version__} (SDK {hubble_gateway.__version__})",
     )
     parser.add_argument("--sdk-key", help="SDK key (or set HUBBLE_SDK_KEY env var)")
