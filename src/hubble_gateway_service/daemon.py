@@ -78,9 +78,8 @@ async def run() -> None:
         )
     )
 
-    has_location = (
-        settings.gps_enabled
-        or (settings.latitude is not None and settings.longitude is not None)
+    has_location = settings.gps_enabled or (
+        settings.latitude is not None and settings.longitude is not None
     )
     if not has_location:
         logger.error(
