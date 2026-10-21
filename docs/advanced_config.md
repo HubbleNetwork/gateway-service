@@ -49,7 +49,7 @@ All settings can be provided via CLI flags, environment variables (prefixed
 | `HUBBLE_SDK_KEY` | `--sdk-key` | *(required)* | SDK key from Hubble dashboard |
 | `HUBBLE_API_BASE_URL` | `--api-url` | `https://gw-api.hubble.com` | Gateway API URL |
 | `HUBBLE_BLE_ADAPTER` | `--adapter` | *(auto)* | BLE adapter (`hci0`, `hci1`) |
-| `HUBBLE_SERVICE_UUIDS` | — | FCA6, FEED | BLE service UUIDs to scan for, as a JSON list of 128-bit UUIDs ² |
+| `HUBBLE_SERVICE_UUIDS` | — | *(none)* | Extra BLE service UUIDs to scan for, as a JSON list of 128-bit UUIDs. Scan-only: not uploaded ² |
 | `HUBBLE_SCAN_DURATION_SECONDS` | — | `5.0` | Seconds per scan cycle |
 | `HUBBLE_BATCH_SIZE` | — | `500` | Max packets per upload batch ¹ |
 | `HUBBLE_UPLOAD_INTERVAL_SECONDS` | — | `60.0` | Seconds between uploads ¹ |
@@ -72,7 +72,12 @@ gateway to these local values. The dedup window holds across uploads: a device
 seen again inside the window is not uploaded again.
 
 ² A JSON list, e.g.
-`HUBBLE_SERVICE_UUIDS='["0000FCA6-0000-1000-8000-00805F9B34FB"]'`.
+`HUBBLE_SERVICE_UUIDS='["0000180F-0000-1000-8000-00805F9B34FB"]'`. The gateway
+always scans for and uploads Hubble's `FCA6` advertisements, plus the payload
+services enabled for its SDK key (such as Tile's `FEED`). Services listed here
+are scanned only; their advertisements are not uploaded. Before 0.1.4 this
+setting defaulted to FCA6 and FEED and its services were uploaded; to keep
+uploading a service you added here, enable it for your SDK key instead.
 
 ## GPS support
 

@@ -189,14 +189,18 @@ wheels = [
 
 [[package]]
 name = "hubble-gateway-sdk-python"
-version = "0.1.0"
-source = { git = "https://github.com/HubbleNetwork/gateway-sdk-python?rev=27965a8096721336139ff22a4c013fb4504ddaf5#27965a8096721336139ff22a4c013fb4504ddaf5" }
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bleak" },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "structlog" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d0/82/ef2954126a0f28cd0df6aeeec5fc8772864d05548ea92f16f37ad014f6e2/hubble_gateway_sdk_python-0.2.0.tar.gz", hash = "sha256:b47ccdcfe241d888ef549e9867690956b7d313474e59594253996782affd49b4", size = 26797, upload-time = "2026-10-21T20:53:53.871Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/15/90/bfb6c3dd315297d5ea1cba4dc9ee4231cf362b04950629be3734cd4be0b1/hubble_gateway_sdk_python-0.2.0-py3-none-any.whl", hash = "sha256:a32fc464b2418abfb8a6d4b360e4689deb913f2f8d1813c70d7c444fed304100", size = 25454, upload-time = "2026-10-21T20:53:52.541Z" },
 ]
 
 [package.optional-dependencies]
@@ -207,7 +211,7 @@ gps = [
 
 [[package]]
 name = "hubble-gateway-service"
-version = "0.1.2"
+version = "0.1.4"
 source = { editable = "." }
 dependencies = [
     { name = "hubble-gateway-sdk-python", extra = ["gps"] },
@@ -223,7 +227,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "hubble-gateway-sdk-python", extras = ["gps"], git = "https://github.com/HubbleNetwork/gateway-sdk-python?rev=27965a8096721336139ff22a4c013fb4504ddaf5" },
+    { name = "hubble-gateway-sdk-python", extras = ["gps"], specifier = ">=0.2.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
