@@ -4,12 +4,16 @@ Ready-to-run BLE gateway for [Hubble Network](https://hubblenetwork.com). It
 scans for Bluetooth Low Energy devices and uploads sightings to the Hubble
 cloud. Built on the [hubble-gateway SDK](https://github.com/HubbleNetwork/gateway-sdk-python).
 
-Pick the path that matches your hardware:
+Two things before you start: an **SDK key** from the Hubble dashboard, and a
+**location** for the gateway — either fixed coordinates or a GPS module.
 
-- [**New Raspberry Pi**](#new-raspberry-pi--flash-the-image) — flash a
-  ready-to-run SD card. No terminal needed.
-- [**Existing Raspberry Pi / Linux**](#existing-raspberry-pi--linux--one-line-install) —
-  one-line install onto a machine you already run.
+## Choose your path
+
+| Your hardware | Start here |
+|---|---|
+| A new Raspberry Pi | [Flash the image](#new-raspberry-pi--flash-the-image) — no terminal needed |
+| A Raspberry Pi or Linux machine you already run | [One-line install](#existing-linux-machine--one-line-install) |
+| An embedded image — Yocto, read-only root, no package manager | [Embedded install](#embedded-linux--yocto-and-read-only-images) |
 
 ## New Raspberry Pi — flash the image
 
@@ -54,44 +58,78 @@ Flash an SD card with the gateway image; it runs automatically on boot.
 Full walkthrough (Imager customization wizard, GPS, verifying on-device):
 **[Raspberry Pi image guide](rpi-image/README.md)**.
 
-## Existing Raspberry Pi / Linux — one-line install
+## Existing Linux machine — one-line install
 
-Already have a running Pi or Linux box? Install the gateway as a systemd
-service:
+Already have a Raspberry Pi or Linux box running? Install the gateway as a
+systemd service:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh \
-  | sudo sh -s -- --sdk-key <YOUR_SDK_KEY>
+  | sudo sh -s -- --sdk-key <YOUR_SDK_KEY> --lat 37.7749 --lon -122.4194
 ```
 
-This downloads a single pre-built binary (no Python required), writes your
-config, registers a systemd service, and starts it. It works on Debian/Ubuntu,
-Fedora, openSUSE, Arch, Alpine and Yocto-style embedded images:
+That downloads a single pre-built binary (no Python needed), writes your config
+to `/opt/hubble-gateway/.env`, and starts a service that comes back up on
+reboot. It works on Debian and Ubuntu, Fedora, openSUSE, Arch and Alpine.
 
-- It installs BlueZ with whatever package manager the system has, and on systems
-  without one (Yocto) checks that BlueZ is already present.
-- It installs to `/opt/hubble-gateway`, or, on a read-only root filesystem, to a
-  persistent writable location such as `/data/hubble-gateway`. Pick one with
-  `--install-dir`.
-- It falls back to pip when no binary fits the system (32-bit ARM, musl libc).
-- Without systemd, it installs the gateway and prints the command to start it.
-
-See [Read-only root filesystems](docs/advanced_config.md#read-only-root-filesystems)
-for how the read-only case works.
-
-With GPS:
+Give it a location, either fixed coordinates as above or a GPS module:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh \
   | sudo sh -s -- --sdk-key <YOUR_SDK_KEY> --gps --gps-port /dev/ttyAMA0
 ```
 
-Uninstall:
+To remove it again:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh \
   | sudo sh -s -- --uninstall
 ```
+
+## Embedded Linux — Yocto and read-only images
+
+The same installer handles images that aren't shaped like Debian. It's plain
+POSIX `sh`, so it runs under BusyBox without bash, and it works out the rest on
+its own:
+
+- **No `apt-get`?** It uses whichever package manager is present — `dnf`,
+  `yum`, `zypper`, `pacman` or `apk` — to install BlueZ. With no package
+  manager at all, it checks BlueZ is already in the image and tells you if it
+  isn't.
+- **Read-only root?** `/opt` isn't writable, so it installs to a persistent
+  writable partition instead (`/data`, `/persist` or `/var/lib`) and keeps
+  everything it writes — Python runtime, cache, auth tokens — inside that
+  directory rather than under `$HOME`.
+- **No systemd?** It installs the gateway and prints the command to start it.
+
+Choose the install location yourself with `--install-dir`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh \
+  | sudo sh -s -- --sdk-key <YOUR_SDK_KEY> --lat 37.7749 --lon -122.4194 \
+    --install-dir /data/hubble-gateway
+```
+
+Two limits worth knowing before you build this into an image. The pre-built
+binary needs **glibc 2.34 or newer** — on musl systems such as Alpine the
+installer falls back to pip — and on its **first run it downloads its Python
+dependencies**, so the device needs internet access once. After that it starts
+instantly and runs offline.
+
+The details — the paths it moves off `$HOME`, every installer option, and
+ready-made systemd units you can bake into an image — are in
+**[Read-only root filesystems](docs/advanced_config.md#read-only-root-filesystems)**.
+
+## Check it's working
+
+```bash
+sudo systemctl status hubble-gateway     # should say: active (running)
+sudo journalctl -u hubble-gateway -f     # watch it scan and upload
+```
+
+Within a minute or two the gateway shows up in your Hubble dashboard. If the
+service keeps restarting, the logs almost always name the reason — a missing
+location and a bad SDK key are the two common ones.
 
 ## Advanced
 
