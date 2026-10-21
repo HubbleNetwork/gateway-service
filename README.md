@@ -61,25 +61,36 @@ service:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh \
-  | sudo bash -s -- --sdk-key <YOUR_SDK_KEY>
+  | sudo sh -s -- --sdk-key <YOUR_SDK_KEY>
 ```
 
 This downloads a single pre-built binary (no Python required), writes your
-config, registers a systemd service, and starts it. It falls back to pip if no
-binary is available for your architecture.
+config, registers a systemd service, and starts it. It works on Debian/Ubuntu,
+Fedora, openSUSE, Arch, Alpine and Yocto-style embedded images:
+
+- It installs BlueZ with whatever package manager the system has, and on systems
+  without one (Yocto) checks that BlueZ is already present.
+- It installs to `/opt/hubble-gateway`, or, on a read-only root filesystem, to a
+  persistent writable location such as `/data/hubble-gateway`. Pick one with
+  `--install-dir`.
+- It falls back to pip when no binary fits the system (32-bit ARM, musl libc).
+- Without systemd, it installs the gateway and prints the command to start it.
+
+See [Read-only root filesystems](docs/advanced_config.md#read-only-root-filesystems)
+for how the read-only case works.
 
 With GPS:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh \
-  | sudo bash -s -- --sdk-key <YOUR_SDK_KEY> --gps --gps-port /dev/ttyAMA0
+  | sudo sh -s -- --sdk-key <YOUR_SDK_KEY> --gps --gps-port /dev/ttyAMA0
 ```
 
 Uninstall:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh \
-  | sudo bash -s -- --uninstall
+  | sudo sh -s -- --uninstall
 ```
 
 ## Advanced
