@@ -32,8 +32,16 @@ Flash an SD card with the gateway image; it runs automatically on boot.
    | CM4 | <https://github.com/HubbleNetwork/gateway-service/releases/latest/download/hubble-gateway-cm4.img.xz> |
    | CM5 | <https://github.com/HubbleNetwork/gateway-service/releases/latest/download/hubble-gateway-cm5.img.xz> |
 
-3. **Flash it** with Imager and set **Wi‑Fi** in OS Customization (or skip it to
-   use ethernet).
+3. **Flash it** with Imager **using `rpi-image/hubble-gateway.rpi-imager-manifest`**
+   (App Options → Content Repository → Use custom → the manifest; see the
+   [image guide](rpi-image/README.md#3-flash-with-raspberry-pi-imager-and-set-wifi--ssh-key)),
+   and in OS Customization set **Wi‑Fi** (or skip it for ethernet) and your
+   **SSH public key**.
+
+   > **Warning:** choosing the `.img.xz` itself via **Choose OS → Use custom**
+   > skips OS Customization. The image has **no default password** — log in
+   > with an SSH key (from Imager, or `SSH_AUTHORIZED_KEY=` in
+   > `hubble-gateway.conf`).
 4. **Set your SDK key + location.** After flashing, **remove the card and
    re-insert it** so the `bootfs` (BOOT) volume mounts on your computer. Copy
    the example config to the real filename and edit it:

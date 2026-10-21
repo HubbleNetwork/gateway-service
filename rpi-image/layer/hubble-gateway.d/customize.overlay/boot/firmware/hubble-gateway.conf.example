@@ -32,3 +32,14 @@ LON=-122.4194
 #WIFI_SSID=my-network
 #WIFI_PSK=my-password
 #WIFI_COUNTRY=US
+
+# --- SSH access (optional) ---------------------------------------------------
+# The image has NO default password and SSH accepts public keys only. Supply
+# your key here (or in Imager's OS Customization -> Services -> SSH -> public
+# key). Paste the whole line from e.g. ~/.ssh/id_ed25519.pub. Repeat the line
+# to authorize several keys. Then: ssh hubble@hubble-gateway.local
+#SSH_AUTHORIZED_KEY=ssh-ed25519 AAAAC3Nza...your-key... you@laptop
+#
+# Password SSH is off by default. Only turn it on if you also set a password
+# for the user in Imager's OS Customization.
+#SSH_PASSWORD_AUTH=yes

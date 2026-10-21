@@ -4,20 +4,26 @@
 #   ./rpi-image-gen build -S <path-to>/gateway-service/rpi-image -c hubble-gateway.yaml
 #
 # The `-S` source dir makes the custom `hubble-gateway` layer (and its
-# rootfs-overlay) discoverable.
+# hubble-gateway.d/ companion directory) discoverable.
 
 device:
   # Target model (rpi-image-gen device layer name):
   # rpi5 | rpi4 | rpi3 | rpizero2w | rpi-cm4 | rpi-cm5
   layer: rpi5
   hostname: hubble-gateway
-  # A local login account. Raspberry Pi Imager's customization can override the
-  # username/password and SSH keys at flash time. CHANGE THIS default password
-  # or rely on Imager to set credentials.
+  # Local login account (uid 1000). There is deliberately NO password: a
+  # password committed here would be shared by every flashed device, and this
+  # account has sudo. With no user1pass/user1passhash rpi-image-gen creates the
+  # account with a locked password, so it cannot log in on the console or over
+  # SSH with a password. Get in with an SSH key instead (see ssh: below and
+  # rpi-image/README.md "Logging in"):
+  #   - Raspberry Pi Imager OS Customization (via the manifest) -> SSH -> public key
+  #   - SSH_AUTHORIZED_KEY=... in hubble-gateway.conf on the boot partition
+  # Imager can also set a username/password at flash time if you want one.
   user1: hubble
-  # Must satisfy rpi-image-gen's password policy (upper/lower/digit/symbol, 8+).
-  # Change this or override it in Raspberry Pi Imager at flash time.
-  user1pass: HubbleGw1!
+  # The account has no password, so sudo must not ask for one (otherwise the
+  # key-only login could never become root). Access is gated by the SSH key.
+  user1sudo: nopasswd
 
 image:
   layer: image-rpios
@@ -27,6 +33,16 @@ image:
 
 layer:
   base: hubble-gateway
+
+# SSH: public-key authentication only (rpi-image-gen's openssh-server layer
+# writes /etc/ssh/sshd_config.d/01pubkey-only.conf: no password/keyboard-
+# interactive auth, no root login). To re-enable password SSH on a device set
+# SSH_PASSWORD_AUTH=yes in hubble-gateway.conf (and set a password in Imager).
+# pubkey_user1 optionally bakes an authorized key into the image at build time
+# (a file path or the key itself); leave empty for published images.
+ssh:
+  pubkey_only: "y"
+  pubkey_user1: ""
 
 # Wireless regulatory domain baked into the image. Imager will also set a
 # country when you configure wifi there.

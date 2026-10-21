@@ -5,13 +5,29 @@ automatically on boot. Images are built by CI (see
 [Building the image](#building-the-image-maintainers)); as an operator you just
 **download a prebuilt image and flash it**.
 
+> [!WARNING]
+> **Flash through the manifest, not "Use custom".** If you pick the `.img.xz`
+> directly via Imager's **Choose OS → Use custom**, Imager **skips OS
+> Customization entirely** — no Wi‑Fi, no SSH key, no hostname — and because
+> this image has **no default password** you will have no way to log in. Always
+> load `hubble-gateway.rpi-imager-manifest` (step 3) and pick
+> **Choose OS → Hubble Gateway**. (If you already flashed via "Use custom", you
+> can still add Wi‑Fi and an SSH key through `hubble-gateway.conf`, step 4.)
+
 The flow:
 
 1. **Install Raspberry Pi Imager.**
 2. **Download** the image for your Pi model via the direct link below.
-3. **Flash** it with Imager and set **Wi‑Fi** (or leave it for ethernet).
+3. **Flash** it with Imager **via the manifest** and set **Wi‑Fi** (or leave it
+   for ethernet) and your **SSH public key**.
 4. **Edit `hubble-gateway.conf`** on the boot partition with your SDK key + location.
 5. Boot the Pi — it provisions itself and the gateway starts.
+
+> [!IMPORTANT]
+> **There is no default password.** The `hubble` account has a locked password
+> and SSH accepts public keys only. You get in with an SSH key supplied in
+> Imager's OS Customization or via `SSH_AUTHORIZED_KEY=` in
+> `hubble-gateway.conf` — see [Logging in](#logging-in).
 
 ---
 
@@ -54,7 +70,12 @@ Imager show the customization wizard for a local image).
 
 ---
 
-## 3. Flash with Raspberry Pi Imager (and set Wi‑Fi)
+## 3. Flash with Raspberry Pi Imager (and set Wi‑Fi + SSH key)
+
+> [!WARNING]
+> Do **not** use **Choose OS → Use custom** with the `.img.xz`: that path
+> **skips OS Customization** (Wi‑Fi, SSH key, hostname, user), and the image has
+> no default password. Use the manifest as below.
 
 Imager 2.x won't show OS Customization for a plain local image unless it knows
 the image's customization format. Point it at the included manifest:
@@ -71,7 +92,12 @@ In OS Customization set:
 
 - **Wi‑Fi** — SSID, password, country. *(Skip this to use ethernet — DHCP just
   works, nothing to configure.)*
-- **Hostname**, **SSH** (enable + your public key), **locale** as desired.
+- **SSH** — enable it and choose **public-key authentication**, then
+  paste your public key (e.g. the contents of `~/.ssh/id_ed25519.pub`). This is
+  how you log in; the image has no default password.
+- **Hostname**, **username/password**, **locale** as desired. A password set
+  here works on the console and for `sudo`; SSH stays key-only unless you also
+  set `SSH_PASSWORD_AUTH=yes` (step 4).
 
 Then **Save** and **Write** the image.
 
@@ -117,11 +143,43 @@ so the key isn't left in plaintext. `hubble-gateway.service` then starts.
 
 `hubble-gateway.conf` keys: `SDK_KEY`, `LAT`, `LON`, `GPS`, `GPS_PORT`,
 `GPS_BAUD`, `GPS_MODULE`, `ADAPTER`, `API_URL`, `WIFI_SSID`, `WIFI_PSK`,
-`WIFI_COUNTRY` (also accepts `HUBBLE_*` names).
+`WIFI_COUNTRY`, `SSH_AUTHORIZED_KEY`, `SSH_PASSWORD_AUTH` (also accepts
+`HUBBLE_*` names for the gateway settings).
+
+To authorize an SSH key without Imager (e.g. you flashed via "Use custom"), add
+one line per key:
+
+```ini
+SSH_AUTHORIZED_KEY=ssh-ed25519 AAAAC3Nza...your-key... you@laptop
+```
 
 > The daemon requires a location. Provide `LAT`+`LON` or `GPS=true`. Without a
 > location the service starts, fails fast, and retries every 15s until you set
 > one.
+
+---
+
+## Logging in
+
+The image ships with **no shared password**: the login account (`hubble`, uid
+1000) has a locked password, and sshd allows **public-key authentication only**
+(`/etc/ssh/sshd_config.d/01pubkey-only.conf`; root login disabled). The account
+has passwordless `sudo`, so the SSH key is the credential that protects the
+device. Ways in:
+
+| How | What to do |
+|---|---|
+| **SSH key via Imager** (recommended) | OS Customization → SSH → public-key only → paste your key. Then `ssh hubble@hubble-gateway.local` (or the username/hostname you set). |
+| **SSH key via the boot partition** | Add `SSH_AUTHORIZED_KEY=<your .pub line>` to `hubble-gateway.conf` (repeat for more keys). Applied on next boot for the uid‑1000 user. |
+| **Console (HDMI + keyboard / serial)** | Only if you set a username/password in Imager's OS Customization. |
+| **Password SSH** (not recommended) | Set a password in Imager *and* add `SSH_PASSWORD_AUTH=yes` to `hubble-gateway.conf`. `SSH_PASSWORD_AUTH=no` turns it back off. |
+
+If Imager renamed the user, `sudo` uses the password you set in Imager.
+
+Lost access? Re-insert the card, add `SSH_AUTHORIZED_KEY=...` to
+`hubble-gateway.conf` on the boot partition, and boot again. (Anyone with
+physical access to the card can do this, as with any Pi — protect the device
+physically.)
 
 ---
 
@@ -145,6 +203,8 @@ Raspberry Pi Imager
 
 Boot partition (bootfs, FAT)
   └─ hubble-gateway.conf ─► hubble-provision.service ─► /opt/hubble-gateway/.env
+                                                     ├─► ~/.ssh/authorized_keys (SSH_AUTHORIZED_KEY)
+                                                     └─► sshd_config.d (SSH_PASSWORD_AUTH)
 
 systemd (multi-user.target)
   ├─ hubble-provision.service   (oneshot, Before hubble-gateway)
@@ -172,6 +232,21 @@ Images are normally built by GitHub Actions
 The workflow writes a small `ci.yaml` that `include:`s `hubble-gateway.yaml` and
 overrides `device.layer` / `hubble.version` / `hubble.install_method` per run.
 
+**rpi-image-gen is pinned** to a specific commit (`RIG_REF` in the workflow).
+Upstream changes its layer layout without notice — image-v0.1.3/v0.1.4 were
+built against unpinned `master` after upstream moved per-layer overlays to
+`<layer>.d/customize.overlay` and hooks from `bdebstrap/` to `hooks/`, and
+shipped without the provisioner or any enabled units. To move to a newer
+upstream, run the workflow manually with `rpi_image_gen_ref=<sha>`, check that
+**Verify image contents** passes, then update the pinned SHA.
+
+Every build runs `.github/scripts/verify-rpi-image.sh` on the produced `.img`
+(reads the partitions with `debugfs`/`mtools`, no mounts) and fails if the
+provisioner, the systemd units and their `multi-user.target.wants` links, the
+daemon, or `hubble-gateway.conf.example` on the FAT partition are missing, or if
+a password is baked in / SSH password auth is on. You can run it locally on any
+built or downloaded (decompressed) image.
+
 ### Build locally
 
 On a Debian/Ubuntu amd64 host (cross-build) or a Pi:
@@ -179,6 +254,7 @@ On a Debian/Ubuntu amd64 host (cross-build) or a Pi:
 ```bash
 git clone https://github.com/raspberrypi/rpi-image-gen.git
 cd rpi-image-gen
+git checkout a67e556612a1f902245b2dc1b21c476f570e16b5   # the SHA pinned in rpi-image.yml
 sudo ./install_deps.sh
 
 # Build using this project as the source dir (-S) so the custom layer is found.
@@ -198,13 +274,16 @@ Edit `config/hubble-gateway.yaml`:
 - `hubble.install_method` — `binary` (prebuilt aarch64, default) or `pip` (from PyPI).
 - `hubble.version` — `latest` or a release tag like `v0.1.0`.
 - `ieee80211.regdom` — default wireless country.
+- `ssh.pubkey_user1` — bake an SSH public key (file path or key text) into the
+  image for your own fleet builds. Leave empty for published images.
+- Do **not** add `device.user1pass` back: it would be a password shared by every
+  device flashed from the image (the verify step rejects it).
 
 ### What's in this directory
 
 | Path | Purpose |
 |---|---|
 | `config/hubble-gateway.yaml` | Build config — selects device/image/networking and Hubble options |
-| `layer/hubble-gateway.yaml` | Custom layer — installs the daemon, seeds config, enables services |
-| `layer/hubble-gateway.rootfs-overlay/` | Files baked into the image (systemd units, provisioner, boot config example) |
-| `bdebstrap/customize90-hubble` | Customize-phase hook that enables the services after the overlay is applied |
+| `layer/hubble-gateway.yaml` | Custom layer — installs the daemon, seeds config, checks the overlay landed, enables services |
+| `layer/hubble-gateway.d/customize.overlay/` | Files baked into the image (systemd units, provisioner, boot config example); rpi-image-gen applies it just before the layer's customize-hooks |
 | `hubble-gateway.rpi-imager-manifest` | Local Imager manifest so the Customization wizard appears |
