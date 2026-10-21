@@ -1,6 +1,6 @@
 # METABEGIN
 # X-Env-Layer-Name: hubble-gateway
-# X-Env-Layer-Version: 1.0.0
+# X-Env-Layer-Version: 1.1.0
 # X-Env-Layer-Category: application
 # X-Env-Layer-Desc: Hubble Network BLE gateway appliance. Installs the
 #  hubble-gateway daemon, a systemd service that starts it on boot, and a
@@ -174,8 +174,26 @@ mmdebstrap:
       if [ -n "${IGconf_hubble_adapter:-}" ]; then echo "HUBBLE_BLE_ADAPTER=${IGconf_hubble_adapter}" >> "$ENV_FILE"; fi
       chmod 600 "$ENV_FILE"
 
-    # NOTE: the systemd units and the provisioner script are delivered by this
-    # layer's rootfs-overlay, which rpi-image-gen rsyncs into the rootfs during
-    # the customize phase *after* these inline hooks run. Enabling the units is
-    # therefore done in bdebstrap/customize90-hubble (a discrete phase script
-    # that runs after overlays are applied), not here.
+    # --- Verify the overlay landed, then enable the units -----------------
+    # The systemd units, the provisioner and the boot-partition conf example
+    # ship in hubble-gateway.d/customize.overlay/. rpi-image-gen (since
+    # upstream commit 2188078, "core: unify layout for hooks and overlays to be
+    # layer driven") applies a layer's <stem>.d/customize.overlay immediately
+    # *before* that layer's own customize-hooks, so they can be enabled here.
+    # The old sibling hubble-gateway.rootfs-overlay/ directory and the
+    # SRCROOT bdebstrap/ hook directory are silently ignored by current
+    # rpi-image-gen, which is what shipped image-v0.1.3/v0.1.4 without them.
+    # Fail the build loudly rather than produce an image that never starts.
+    - |-
+      set -eu
+      for f in usr/local/sbin/hubble-provision \
+               etc/systemd/system/hubble-provision.service \
+               etc/systemd/system/hubble-gateway.service \
+               boot/firmware/hubble-gateway.conf.example; do
+        if [ ! -e "$1/$f" ]; then
+          echo "hubble-gateway: /$f missing from rootfs; hubble-gateway.d/customize.overlay was not applied" >&2
+          exit 1
+        fi
+      done
+      chmod 0755 "$1/usr/local/sbin/hubble-provision"
+    - $BDEBSTRAP_HOOKS/enable-units "$1" hubble-provision.service hubble-gateway.service

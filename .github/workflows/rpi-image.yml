@@ -30,9 +30,9 @@ on:
         default: binary
         options: [binary, pip]
       rpi_image_gen_ref:
-        description: "rpi-image-gen git ref to build with"
+        description: "rpi-image-gen git ref to build with (empty = the pinned known-good commit, see RIG_REF below)"
         type: string
-        default: master
+        default: ""
   push:
     tags: ["image-v*"]
 
@@ -65,7 +65,16 @@ jobs:
     env:
       GATEWAY_VERSION: ${{ github.event.inputs.gateway_version || 'latest' }}
       INSTALL_METHOD: ${{ github.event.inputs.install_method || 'binary' }}
-      RIG_REF: ${{ github.event.inputs.rpi_image_gen_ref || 'master' }}
+      # rpi-image-gen is pinned to a known-good commit. Building against unpinned
+      # master is what broke image-v0.1.3/v0.1.4: upstream 2188078 ("core: unify
+      # layout for hooks and overlays to be layer driven", merged 2026-09-01 via
+      # raspberrypi/rpi-image-gen#314) moved a layer's overlay to
+      # <stem>.d/customize.overlay and SRCROOT hooks from bdebstrap/ to hooks/,
+      # silently dropping ours. Bump deliberately, with a workflow_dispatch build
+      # (rpi_image_gen_ref=<sha>) whose "Verify image contents" step passes,
+      # then update the SHA here.
+      # a67e556 = master as of 2026-10-21 (Merge PR #366).
+      RIG_REF: ${{ github.event.inputs.rpi_image_gen_ref || 'a67e556612a1f902245b2dc1b21c476f570e16b5' }}
     steps:
       - name: Resolve gateway version
         run: |
@@ -87,6 +96,9 @@ jobs:
           repository: raspberrypi/rpi-image-gen
           ref: ${{ env.RIG_REF }}
           path: rpi-image-gen
+
+      - name: Record rpi-image-gen revision
+        run: echo "rpi-image-gen ${RIG_REF} -> $(git -C rpi-image-gen rev-parse HEAD)"
 
       - name: Install rpi-image-gen dependencies
         working-directory: rpi-image-gen
@@ -131,6 +143,15 @@ jobs:
           ./rpi-image-gen build \
             -S "${{ github.workspace }}/gateway-service/rpi-image" \
             -c ci.yaml
+
+      - name: Verify image contents
+        run: |
+          set -euo pipefail
+          # mtools reads the FAT boot partition; sfdisk/debugfs are preinstalled.
+          sudo apt-get install -y -qq mtools fdisk e2fsprogs >/dev/null
+          IMG="$(find "${{ github.workspace }}/out" -type f -name '*.img' | sort | tail -n1 || true)"
+          [ -n "$IMG" ] || { echo "No .img produced under out/" >&2; exit 1; }
+          gateway-service/.github/scripts/verify-rpi-image.sh "$IMG"
 
       - name: Package artifacts
         id: pkg

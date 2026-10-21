@@ -21,6 +21,12 @@
 #   WIFI_SSID=                        # optional wifi fallback (Imager wifi preferred)
 #   WIFI_PSK=
 #   WIFI_COUNTRY=US
+#   SSH_AUTHORIZED_KEY=ssh-ed25519 AAAA... you@laptop
+#                                     # optional; authorize an SSH public key
+#                                     # for the login user (uid 1000). May be
+#                                     # repeated, one key per line.
+#   SSH_PASSWORD_AUTH=no              # optional; yes re-enables SSH password
+#                                     # login (off by default, key-only)
 #
 # HUBBLE_*-prefixed keys are also accepted (e.g. HUBBLE_SDK_KEY=...).
 
@@ -56,6 +62,9 @@ fi
 SDK_KEY=""; API_URL=""; LAT=""; LON=""
 GPS="false"; GPS_PORT=""; GPS_BAUD=""; GPS_MODULE=""; ADAPTER=""
 WIFI_SSID=""; WIFI_PSK=""; WIFI_COUNTRY=""
+SSH_KEYS=""; SSH_PASSWORD_AUTH=""
+NL='
+'
 
 load_env_defaults() {
     [ -f "$ENV_FILE" ] || return 0
@@ -126,6 +135,9 @@ parse_conf() {
             WIFI_SSID)                       WIFI_SSID="$val" ;;
             WIFI_PSK|WIFI_PASSWORD)          WIFI_PSK="$val" ;;
             WIFI_COUNTRY)                    WIFI_COUNTRY="$val" ;;
+            SSH_AUTHORIZED_KEY|SSH_AUTHORIZED_KEYS|SSH_KEY)
+                if [ -n "$val" ]; then SSH_KEYS="${SSH_KEYS}${val}${NL}"; fi ;;
+            SSH_PASSWORD_AUTH)               SSH_PASSWORD_AUTH="$val" ;;
             *) log "ignoring unknown key '${key}'" ;;
         esac
     done < "$CONF"
@@ -177,6 +189,73 @@ configure_wifi() {
     fi
 }
 
+# --- SSH access -------------------------------------------------------------
+
+# The image ships with no password for the login user and SSH restricted to
+# public keys. These let an operator authorize a key (or opt back in to
+# password SSH) from the boot partition, without Imager.
+
+# Login user = uid 1000 (Imager's customization may have renamed it).
+login_user() { getent passwd 1000 | cut -d: -f1; }
+
+install_ssh_keys() {
+    [ -n "$SSH_KEYS" ] || return 0
+    user="$(login_user)"
+    if [ -z "$user" ]; then
+        log "no uid 1000 login user; cannot install SSH_AUTHORIZED_KEY"
+        return 0
+    fi
+    home="$(getent passwd "$user" | cut -d: -f6)"
+    group="$(id -gn "$user")"
+    [ -d "$home" ] || { log "home ${home} for ${user} missing; skipping SSH keys"; return 0; }
+    install -d -m 0700 -o "$user" -g "$group" "${home}/.ssh"
+    ak="${home}/.ssh/authorized_keys"
+    [ -f "$ak" ] || install -m 0600 -o "$user" -g "$group" /dev/null "$ak"
+    printf '%s' "$SSH_KEYS" | while IFS= read -r key; do
+        [ -n "$key" ] || continue
+        case "$key" in
+            ssh-*|ecdsa-*|sk-*) ;;
+            *) log "ignoring SSH_AUTHORIZED_KEY that is not an OpenSSH public key"; continue ;;
+        esac
+        if grep -qxF -- "$key" "$ak"; then
+            log "SSH key already authorized for ${user}"
+        else
+            printf '%s\n' "$key" >> "$ak"
+            log "authorized SSH key (${key%% *}) for ${user}"
+        fi
+    done
+    chown "$user:$group" "$ak"
+    chmod 0600 "$ak"
+}
+
+configure_ssh_password_auth() {
+    [ -n "$SSH_PASSWORD_AUTH" ] || return 0
+    # Sorts before rpi-image-gen's 01pubkey-only.conf; sshd uses the first
+    # value it reads for each keyword.
+    dropin=/etc/ssh/sshd_config.d/00-hubble-password-auth.conf
+    case "$(printf '%s' "$SSH_PASSWORD_AUTH" | tr 'A-Z' 'a-z')" in
+        1|y|yes|true|on)
+            mkdir -p /etc/ssh/sshd_config.d
+            printf '%s\n' \
+                "# Written by hubble-provision (SSH_PASSWORD_AUTH=yes)." \
+                "PasswordAuthentication yes" \
+                "AuthenticationMethods any" > "$dropin"
+            chmod 0644 "$dropin"
+            log "SSH password authentication ENABLED"
+            pw="$(getent shadow "$(login_user)" 2>/dev/null | cut -d: -f2)"
+            case "$pw" in
+                ''|'!'*|'*'*) log "WARNING: $(login_user) has no password set; password SSH will not work until one is set (e.g. via Imager)" ;;
+            esac
+            ;;
+        0|n|no|false|off)
+            rm -f "$dropin"
+            log "SSH password authentication disabled (key-only)"
+            ;;
+        *) log "ignoring SSH_PASSWORD_AUTH='${SSH_PASSWORD_AUTH}' (use yes or no)"; return 0 ;;
+    esac
+    systemctl try-reload-or-restart ssh.service 2>/dev/null || true
+}
+
 # --- Bluetooth ------------------------------------------------------------
 
 # Fresh images boot with the Bluetooth radio rfkill soft-blocked, which makes
@@ -205,6 +284,8 @@ parse_conf
 write_env
 unblock_bluetooth
 configure_wifi
+install_ssh_keys
+configure_ssh_password_auth
 
 if [ -z "$SDK_KEY" ]; then
     log "WARNING: no SDK key set. Add SDK_KEY=... to ${BOOT_DIR:-/boot/firmware}/hubble-gateway.conf and reboot."
