@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: System :: Networking",
 ]
 dependencies = [
-    "hubble-gateway-sdk-python[gps]>=0.1.1",
+    "hubble-gateway-sdk-python[gps]>=0.2.0",
     "structlog>=23.2.0",
 ]
 
