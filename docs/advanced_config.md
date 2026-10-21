@@ -2,7 +2,7 @@
 
 Reference for configuring `hubble-gateway`, plus manual install methods for when
 the [Raspberry Pi image](../rpi-image/README.md) or the
-[one-line installer](../README.md#existing-raspberry-pi--linux--one-line-install)
+[one-line installer](../README.md#existing-linux-machine--one-line-install)
 don't fit your setup.
 
 ## Contents
@@ -127,7 +127,7 @@ Or pin a specific version, e.g. `VERSION=v0.1.2`.
 
 ### systemd service
 
-The [one-line installer](../README.md#existing-raspberry-pi--linux--one-line-install)
+The [one-line installer](../README.md#existing-linux-machine--one-line-install)
 sets this up automatically. To do it by hand:
 
 ```ini
