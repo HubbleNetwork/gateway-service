@@ -20,7 +20,7 @@ The flow:
 2. **Download** the image for your Pi model via the direct link below.
 3. **Flash** it with Imager **via the manifest** and set **Wi‑Fi** (or leave it
    for ethernet) and your **SSH public key**.
-4. **Edit `hubble-gateway.conf`** on the boot partition with your SDK key + location.
+4. **Edit `hubble-gateway.conf`** on the boot partition with your Gateway Group ID + location.
 5. Boot the Pi — it provisions itself and the gateway starts.
 
 > [!IMPORTANT]
@@ -104,14 +104,14 @@ Then **Save** and **Write** the image.
 These fields map to Imager's `firstrun.sh`, which this image honors via the
 `raspberrypi-sys-mods` package (it configures NetworkManager, SSH and hostname).
 
-> **Why isn't the SDK key a field here?** Imager's customization fields are a
+> **Why isn't the Group ID a field here?** Imager's customization fields are a
 > fixed set (hostname, user, wifi, SSH, locale). Imager has no mechanism for a
-> custom "SDK Key" field, so the key is supplied via the boot partition instead
+> custom "Group ID" field, so the Group ID is supplied via the boot partition instead
 > (next step).
 
 ---
 
-## 4. Edit `hubble-gateway.conf` (SDK key + location)
+## 4. Edit `hubble-gateway.conf` (Group ID + location)
 
 After flashing, **remove the card/USB and re-insert it** — the small
 **`bootfs`** (FAT) partition then mounts on your computer containing
@@ -124,7 +124,7 @@ After flashing, **remove the card/USB and re-insert it** — the small
    nano /Volumes/bootfs/hubble-gateway.conf   # Linux: /media/<you>/bootfs/...
    ```
 
-2. Set at least the SDK key and a location:
+2. Set at least the Group ID and a location:
 
    ```ini
    SDK_KEY=hsk_your_key_here
@@ -139,7 +139,7 @@ After flashing, **remove the card/USB and re-insert it** — the small
 On boot, `hubble-provision.service` reads the file, writes
 `/opt/hubble-gateway/.env`, optionally configures Wi‑Fi (if you used `WIFI_*`
 keys instead of Imager), then renames the file to `hubble-gateway.conf.applied`
-so the key isn't left in plaintext. `hubble-gateway.service` then starts.
+so the Group ID isn't left in plaintext. `hubble-gateway.service` then starts.
 
 `hubble-gateway.conf` keys: `SDK_KEY`, `LAT`, `LON`, `GPS`, `GPS_PORT`,
 `GPS_BAUD`, `GPS_MODULE`, `ADAPTER`, `API_URL`, `WIFI_SSID`, `WIFI_PSK`,
@@ -269,7 +269,7 @@ xz -T0 -k <work-output-dir>/hubble-gateway.img
 Edit `config/hubble-gateway.yaml`:
 
 - `device.layer` — `rpi5` (default), `rpi4`, `rpi3`, `zero2w`, `cm4`, `cm5`.
-- `hubble.sdk_key` — bake a key into the image (leave empty to provision at flash time).
+- `hubble.sdk_key` — bake a Group ID into the image (leave empty to provision at flash time).
 - `hubble.lat` / `hubble.lon` or `hubble.gps` — default location.
 - `hubble.install_method` — `binary` (prebuilt aarch64, default) or `pip` (from PyPI).
 - `hubble.version` — `latest` or a release tag like `v0.1.0`.

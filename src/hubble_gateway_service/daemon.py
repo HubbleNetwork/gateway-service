@@ -56,7 +56,7 @@ async def run() -> None:
     )
 
     if not settings.sdk_key:
-        logger.error("SDK key is required")
+        logger.error("Group ID is required")
         sys.exit(1)
 
     shutdown_event = asyncio.Event()
@@ -109,7 +109,7 @@ async def run() -> None:
     await auth.start()
 
     if not await auth.ensure_authenticated():
-        logger.error("Registration failed — check SDK key and network connectivity")
+        logger.error("Registration failed — check Group ID and network connectivity")
         await auth.stop()
         sys.exit(1)
 

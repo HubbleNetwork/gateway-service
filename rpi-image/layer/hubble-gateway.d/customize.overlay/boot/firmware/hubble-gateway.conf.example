@@ -4,9 +4,9 @@
 #   1. After flashing, this file appears on the small FAT partition that mounts
 #      as "bootfs" when you plug the SD card / USB into your computer.
 #   2. Copy or rename this file to "hubble-gateway.conf" (same folder).
-#   3. Fill in at least SDK_KEY and a location (LAT/LON or GPS=true).
+#   3. Fill in at least SDK_KEY (your Gateway Group ID) and a location (LAT/LON or GPS=true).
 #   4. Eject, boot the Pi. On first boot the values are applied and the file is
-#      renamed to hubble-gateway.conf.applied so your key isn't left in plaintext.
+#      renamed to hubble-gateway.conf.applied so your Group ID isn't left in plaintext.
 #
 # Wifi/ethernet: prefer Raspberry Pi Imager's built-in customization for wifi.
 # Ethernet needs nothing (DHCP). The WIFI_* keys below are a fallback if you

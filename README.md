@@ -4,7 +4,8 @@ Ready-to-run BLE gateway for [Hubble Network](https://hubblenetwork.com). It
 scans for Bluetooth Low Energy devices and uploads sightings to the Hubble
 cloud. Built on the [hubble-gateway SDK](https://github.com/HubbleNetwork/gateway-sdk-python).
 
-Two things before you start: an **SDK key** from the Hubble dashboard, and a
+Two things before you start: a **Gateway Group ID** from the Hubble dashboard
+(passed as `--sdk-key` / `HUBBLE_SDK_KEY`, or `SDK_KEY=` in `hubble-gateway.conf`), and a
 **location** for the gateway — either fixed coordinates or a GPS module.
 
 ## Choose your path
@@ -42,7 +43,7 @@ Flash an SD card with the gateway image; it runs automatically on boot.
    > skips OS Customization. The image has **no default password** — log in
    > with an SSH key (from Imager, or `SSH_AUTHORIZED_KEY=` in
    > `hubble-gateway.conf`).
-4. **Set your SDK key + location.** After flashing, **remove the card and
+4. **Set your Group ID + location.** After flashing, **remove the card and
    re-insert it** so the `bootfs` (BOOT) volume mounts on your computer. Copy
    the example config to the real filename and edit it:
 
@@ -51,7 +52,7 @@ Flash an SD card with the gateway image; it runs automatically on boot.
    nano /Volumes/bootfs/hubble-gateway.conf   # Linux: /media/<you>/bootfs/...
    ```
 
-   Set at least your SDK key and a location:
+   Set at least your Group ID and a location:
 
    ```ini
    SDK_KEY=hsk_your_key_here
@@ -137,7 +138,7 @@ sudo journalctl -u hubble-gateway -f     # watch it scan and upload
 
 Within a minute or two the gateway shows up in your Hubble dashboard. If the
 service keeps restarting, the logs almost always name the reason — a missing
-location and a bad SDK key are the two common ones.
+location and a bad Group ID are the two common ones.
 
 ## Advanced
 

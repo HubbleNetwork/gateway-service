@@ -22,7 +22,7 @@ def main() -> None:
         action="version",
         version=f"hubble-gateway-service {__version__} (SDK {hubble_gateway.__version__})",
     )
-    parser.add_argument("--sdk-key", help="SDK key (or set HUBBLE_SDK_KEY env var)")
+    parser.add_argument("--sdk-key", help="Gateway Group ID (or set HUBBLE_SDK_KEY env var)")
     parser.add_argument("--api-url", help="Gateway API base URL")
     parser.add_argument("--adapter", help="BLE adapter (e.g. hci1 for USB dongle)")
     parser.add_argument("--gps", action="store_true", help="Enable GPS")
@@ -63,15 +63,15 @@ def main() -> None:
     sdk_key = os.environ.get("HUBBLE_SDK_KEY", "")
     if not sdk_key:
         print(
-            "Error: SDK key is required.\n"
+            "Error: Group ID is required.\n"
             "  Pass --sdk-key <key> or set HUBBLE_SDK_KEY environment variable.\n"
-            "  Get your key at https://dashboard.hubble.com",
+            "  Get your Group ID at https://dashboard.hubble.com",
             file=sys.stderr,
         )
         sys.exit(1)
 
     print(f"Hubble Gateway Service v{__version__} (SDK v{hubble_gateway.__version__})")
-    print(f"  SDK key: {sdk_key[:8]}...{sdk_key[-4:]}")
+    print(f"  Group ID: {sdk_key[:8]}...{sdk_key[-4:]}")
     print()
 
     from hubble_gateway_service.daemon import run
