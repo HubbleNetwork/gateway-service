@@ -2,10 +2,10 @@
 # Hubble Gateway — one-line installer for Raspberry Pi / Linux
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh | sudo sh -s -- --sdk-key <YOUR_KEY>
+#   curl -fsSL https://raw.githubusercontent.com/HubbleNetwork/gateway-service/main/scripts/install.sh | sudo sh -s -- --sdk-key <YOUR_GROUP_ID>
 #
 # Options:
-#   --sdk-key KEY        Gateway Group ID (required)
+#   --sdk-key GROUP_ID   Gateway Group ID (required)
 #   --gps                Enable GPS
 #   --gps-port PORT      GPS serial port (default: /dev/ttyAMA0)
 #   --gps-baud RATE      GPS baud rate (default: 9600)
@@ -271,7 +271,7 @@ UNITEOF
     # --- Validate -------------------------------------------------------------
 
     [ "$(id -u)" -eq 0 ] || fatal "This script must be run as root (use sudo)"
-    [ -n "${SDK_KEY}" ] || fatal "Group ID is required: --sdk-key <KEY>"
+    [ -n "${SDK_KEY}" ] || fatal "Group ID is required: --sdk-key <GROUP_ID>"
     have curl || fatal "curl is required"
 
     # --- Install directory ----------------------------------------------------

@@ -64,7 +64,7 @@ def main() -> None:
     if not sdk_key:
         print(
             "Error: Group ID is required.\n"
-            "  Pass --sdk-key <key> or set HUBBLE_SDK_KEY environment variable.\n"
+            "  Pass --sdk-key <group-id> or set HUBBLE_SDK_KEY environment variable.\n"
             "  Get your Group ID at https://dashboard.hubble.com",
             file=sys.stderr,
         )

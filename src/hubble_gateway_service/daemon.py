@@ -85,7 +85,7 @@ async def run() -> None:
         logger.error(
             "No location configured. Packets without a valid location will be rejected. "
             "Provide --lat/--lon for a fixed position, or --gps to enable GPS.",
-            hint="Example: hubble-gateway --sdk-key <key> --lat 37.7614 --lon -122.4399",
+            hint="Example: hubble-gateway --sdk-key <group-id> --lat 37.7614 --lon -122.4399",
         )
         sys.exit(1)
 

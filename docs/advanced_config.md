@@ -97,7 +97,7 @@ List the available adapters and point the gateway at the one you want:
 
 ```bash
 hciconfig                          # find your adapter (hci0, hci1, ...)
-hubble-gateway --sdk-key $KEY --adapter hci1
+hubble-gateway --sdk-key $GROUP_ID --adapter hci1
 ```
 
 > `hciN` numbering is not guaranteed stable across reboots when more than one
@@ -243,7 +243,7 @@ without bash.
 
 | Option | Description |
 |---|---|
-| `--sdk-key KEY` | Group ID (required) |
+| `--sdk-key GROUP_ID` | Group ID (required) |
 | `--lat LAT`, `--lon LON` | Fixed location |
 | `--gps`, `--gps-port`, `--gps-baud`, `--gps-module` | GPS settings, as in the [configuration reference](#configuration-reference) |
 | `--adapter ADAPTER` | BLE adapter (`hci0`, `hci1`) |
