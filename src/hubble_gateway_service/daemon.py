@@ -56,7 +56,7 @@ async def run() -> None:
     )
 
     if not settings.sdk_key:
-        logger.error("SDK key is required")
+        logger.error("Group ID is required")
         sys.exit(1)
 
     shutdown_event = asyncio.Event()
@@ -85,7 +85,7 @@ async def run() -> None:
         logger.error(
             "No location configured. Packets without a valid location will be rejected. "
             "Provide --lat/--lon for a fixed position, or --gps to enable GPS.",
-            hint="Example: hubble-gateway --sdk-key <key> --lat 37.7614 --lon -122.4399",
+            hint="Example: hubble-gateway --sdk-key <group-id> --lat 37.7614 --lon -122.4399",
         )
         sys.exit(1)
 
@@ -109,7 +109,7 @@ async def run() -> None:
     await auth.start()
 
     if not await auth.ensure_authenticated():
-        logger.error("Registration failed — check SDK key and network connectivity")
+        logger.error("Registration failed — check Group ID and network connectivity")
         await auth.stop()
         sys.exit(1)
 

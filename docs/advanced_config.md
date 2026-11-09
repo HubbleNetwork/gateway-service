@@ -26,6 +26,9 @@ don't fit your setup.
 hubble-gateway --sdk-key hsk_your_key_here --lat 37.7749 --lon -122.4194
 ```
 
+`--sdk-key` takes your Gateway Group ID from the Hubble dashboard. You can also
+set it with `HUBBLE_SDK_KEY`.
+
 Or with environment variables:
 
 ```bash
@@ -46,7 +49,7 @@ All settings can be provided via CLI flags, environment variables (prefixed
 
 | Environment Variable | CLI Flag | Default | Description |
 |---|---|---|---|
-| `HUBBLE_SDK_KEY` | `--sdk-key` | *(required)* | SDK key from Hubble dashboard |
+| `HUBBLE_SDK_KEY` | `--sdk-key` | *(required)* | Group ID from Hubble dashboard |
 | `HUBBLE_API_BASE_URL` | `--api-url` | `https://gw-api.hubble.com` | Gateway API URL |
 | `HUBBLE_BLE_ADAPTER` | `--adapter` | *(auto)* | BLE adapter (`hci0`, `hci1`) |
 | `HUBBLE_SERVICE_UUIDS` | — | *(none)* | Extra BLE service UUIDs to scan for, as a JSON list of 128-bit UUIDs. Scan-only: not uploaded ² |
@@ -74,10 +77,10 @@ seen again inside the window is not uploaded again.
 ² A JSON list, e.g.
 `HUBBLE_SERVICE_UUIDS='["0000180F-0000-1000-8000-00805F9B34FB"]'`. The gateway
 always scans for and uploads Hubble's `FCA6` advertisements, plus the payload
-services enabled for its SDK key (such as Tile's `FEED`). Services listed here
+services enabled for its Group ID (such as Tile's `FEED`). Services listed here
 are scanned only; their advertisements are not uploaded. Before 0.1.4 this
 setting defaulted to FCA6 and FEED and its services were uploaded; to keep
-uploading a service you added here, enable it for your SDK key instead.
+uploading a service you added here, enable it for your Group ID instead.
 
 ## GPS support
 
@@ -94,7 +97,7 @@ List the available adapters and point the gateway at the one you want:
 
 ```bash
 hciconfig                          # find your adapter (hci0, hci1, ...)
-hubble-gateway --sdk-key $KEY --adapter hci1
+hubble-gateway --sdk-key $GROUP_ID --adapter hci1
 ```
 
 > `hciN` numbering is not guaranteed stable across reboots when more than one
@@ -180,7 +183,7 @@ WantedBy=multi-user.target
 
 Put your settings in `/opt/hubble-gateway/.env` (one `HUBBLE_*=value` per line;
 see the [configuration reference](#configuration-reference)) and make it
-readable only by root, since it holds your SDK key:
+readable only by root, since it holds your Group ID:
 
 ```bash
 sudo chmod 600 /opt/hubble-gateway/.env
@@ -240,7 +243,7 @@ without bash.
 
 | Option | Description |
 |---|---|
-| `--sdk-key KEY` | SDK key (required) |
+| `--sdk-key GROUP_ID` | Group ID (required) |
 | `--lat LAT`, `--lon LON` | Fixed location |
 | `--gps`, `--gps-port`, `--gps-baud`, `--gps-module` | GPS settings, as in the [configuration reference](#configuration-reference) |
 | `--adapter ADAPTER` | BLE adapter (`hci0`, `hci1`) |
@@ -272,7 +275,7 @@ hubble-gateway-service (this repo)
 hubble-gateway SDK (gateway-sdk-python)
   ├─ Scanner              BLE scanning via bleak
   ├─ GatewaySender        packet batching + dedup + upload
-  ├─ GatewayAuth          SDK key registration + token lifecycle
+  ├─ GatewayAuth          Group ID registration + token lifecycle
   ├─ LocationProvider     GPS (NMEA, UBX, gpsd) + fixed
   ├─ Settings             pydantic-settings config
   └─ BLEPacket, Location  data models

@@ -4,7 +4,7 @@
 # X-Env-Layer-Category: application
 # X-Env-Layer-Desc: Hubble Network BLE gateway appliance. Installs the
 #  hubble-gateway daemon, a systemd service that starts it on boot, and a
-#  boot-time provisioner that reads the SDK key / location / (optional) wifi
+#  boot-time provisioner that reads the Group ID / location / (optional) wifi
 #  from a file on the FAT boot partition. Networking is NetworkManager (wired
 #  DHCP works out of the box; wifi via Raspberry Pi Imager customization or the
 #  boot-partition config). BlueZ provides the BLE stack. raspberrypi-sys-mods
@@ -28,7 +28,7 @@
 # X-Env-VarPrefix: hubble
 #
 # X-Env-Var-sdk_key:
-# X-Env-Var-sdk_key-Desc: Hubble SDK key to bake into the image at build time.
+# X-Env-Var-sdk_key-Desc: Hubble Gateway Group ID to bake into the image at build time.
 #  Leave empty to require provisioning at flash time via the boot-partition
 #  hubble-gateway.conf file.
 # X-Env-Var-sdk_key-Required: n

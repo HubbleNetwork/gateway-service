@@ -288,10 +288,10 @@ install_ssh_keys
 configure_ssh_password_auth
 
 if [ -z "$SDK_KEY" ]; then
-    log "WARNING: no SDK key set. Add SDK_KEY=... to ${BOOT_DIR:-/boot/firmware}/hubble-gateway.conf and reboot."
+    log "WARNING: no Group ID set. Add SDK_KEY=... to ${BOOT_DIR:-/boot/firmware}/hubble-gateway.conf and reboot."
 fi
 
-# Avoid leaving the SDK key in plaintext on the FAT partition and avoid
+# Avoid leaving the Group ID in plaintext on the FAT partition and avoid
 # reprocessing on subsequent boots. Keep a copy the operator can re-enable.
 if [ -n "$CONF" ]; then
     mv "$CONF" "${CONF}.applied" 2>/dev/null || true
